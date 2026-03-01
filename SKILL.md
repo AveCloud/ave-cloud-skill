@@ -47,7 +47,7 @@ Get a free key at https://cloud.ave.ai/register. For higher limits, contact supp
 
 ```bash
 # Build once
-docker build -t ave-cloud .
+docker build -f scripts/Dockerfile -t ave-cloud .
 
 # Run a command (example: search)
 docker run --rm \
