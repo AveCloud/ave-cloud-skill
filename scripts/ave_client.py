@@ -59,38 +59,42 @@ USE_DOCKER = os.environ.get("AVE_USE_DOCKER", "").lower() in ("1", "true", "yes"
 def get_api_key():
     key = os.environ.get("AVE_API_KEY")
     if not key:
-        print("Error: AVE_API_KEY environment variable not set.", file=sys.stderr)
-        print("Get a free key at https://cloud.ave.ai/register | Support: https://t.me/ave_ai_cloud", file=sys.stderr)
-        sys.exit(1)
+        raise EnvironmentError(
+            "AVE_API_KEY environment variable not set. "
+            "Get a free key at https://cloud.ave.ai/register | Support: https://t.me/ave_ai_cloud"
+        )
     return key
 
 
 def get_api_plan():
     plan = os.environ.get("API-PLAN", "free")
     if plan not in VALID_PLANS:
-        print(f"Error: API-PLAN must be one of: {', '.join(VALID_PLANS)}", file=sys.stderr)
-        sys.exit(1)
+        raise ValueError(f"API-PLAN must be one of: {', '.join(VALID_PLANS)}")
     return plan
 
 
 def _make_session():
     """Build a requests session with rate limiting via requests-ratelimiter."""
     try:
-        import requests
         from requests_ratelimiter import LimiterSession
     except ImportError:
-        print(
-            "Error: requests or requests-ratelimiter is not installed.\n"
-            "Run: pip install -r scripts/requirements.txt\n"
-            "Or unset AVE_USE_DOCKER to use the built-in urllib mode.",
-            file=sys.stderr,
+        raise ImportError(
+            "requests or requests-ratelimiter is not installed. "
+            "Run: pip install -r scripts/requirements.txt "
+            "Or unset AVE_USE_DOCKER to use the built-in urllib mode."
         )
-        sys.exit(1)
     rps = PLAN_RPS[get_api_plan()]
     return LimiterSession(per_second=rps)
 
 
-_session = _make_session() if USE_DOCKER else None
+_session = None
+
+
+def _get_session():
+    global _session
+    if _session is None:
+        _session = _make_session()
+    return _session
 
 
 def _builtin_rate_limit():
@@ -118,6 +122,10 @@ class _Response:
     def __init__(self, status_code, body):
         self.status_code = status_code
         self._body = body
+
+    @property
+    def text(self):
+        return self._body
 
     def raise_for_status(self):
         if self.status_code >= 400:
@@ -153,7 +161,7 @@ def api_get(path, params=None):
     if params:
         url += "?" + urllib.parse.urlencode(params)
     if USE_DOCKER:
-        return _session.get(url, headers=_headers())
+        return _get_session().get(url, headers=_headers())
     _builtin_rate_limit()
     return _urllib_get(url)
 
@@ -161,15 +169,14 @@ def api_get(path, params=None):
 def api_post(path, payload):
     url = f"{V2_BASE}{path}"
     if USE_DOCKER:
-        return _session.post(url, headers=_headers(), json=payload)
+        return _get_session().post(url, headers=_headers(), json=payload)
     _builtin_rate_limit()
     return _urllib_post(url, payload)
 
 
 def handle_response(resp):
     if resp.status_code >= 400:
-        print(f"API error {resp.status_code}: {resp._body if hasattr(resp, '_body') else resp.text}", file=sys.stderr)
-        sys.exit(1)
+        raise RuntimeError(f"API error {resp.status_code}: {resp.text}")
     print(json.dumps(resp.json(), indent=2))
 
 
@@ -332,7 +339,11 @@ def main():
         "main-tokens": cmd_main_tokens,
     }
 
-    commands[args.command](args)
+    try:
+        commands[args.command](args)
+    except (EnvironmentError, ValueError, ImportError, RuntimeError) as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
