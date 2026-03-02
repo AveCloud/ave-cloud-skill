@@ -8,7 +8,7 @@ Header: `X-API-KEY: <your_api_key>`
 
 Environment variables:
 - `AVE_API_KEY` — your API key
-- `API-PLAN` — your plan tier: `free`, `normal`, or `pro`
+- `API_PLAN` — your plan tier: `free`, `normal`, or `pro`
 
 Rate limits by plan:
 
@@ -149,10 +149,140 @@ Full list: `python scripts/ave_client.py chains`
 
 ## WebSocket API
 
-Connect to `wss://wss.ave-api.xyz` with `X-API-KEY` header.
+**Endpoint:** `wss://wss.ave-api.xyz`
+**Auth header:** `X-API-KEY: <your_api_key>`
+**Required plan:** `pro`
 
-Supported streams:
-- Heartbeat / ping-pong
-- Live transaction stream for a pair
-- Real-time kline updates
-- Price change notifications
+All messages use JSON-RPC 2.0 framing:
+```json
+{ "jsonrpc": "2.0", "method": "<method>", "params": [...], "id": 1 }
+```
+
+### Interactive REPL (`wss-repl`)
+
+The `wss-repl` command maintains a persistent connection and accepts commands from stdin.
+UI output goes to stderr; JSON event stream goes to stdout (clean for piping to `jq`).
+
+```
+> subscribe price <addr-chain> [<addr-chain> ...]
+> subscribe tx|multi_tx|liq <pair_address> <chain>
+> subscribe kline <pair_address> <chain> [interval]
+> unsubscribe
+> quit
+```
+
+### Heartbeat / Ping-Pong
+
+The server sends periodic pings; the client library handles pong replies automatically.
+The CLI uses `ping_interval=30, ping_timeout=10`.
+
+To send a manual ping:
+```json
+{ "jsonrpc": "2.0", "method": "ping", "params": [], "id": 1 }
+```
+
+Server responds:
+```json
+{ "jsonrpc": "2.0", "result": "pong", "id": 1 }
+```
+
+### Subscribe: Live Transactions (`tx` / `multi_tx` / `liq`)
+
+Subscribe message:
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "subscribe",
+  "params": ["<topic>", "<pair_address>", "<chain>"],
+  "id": 1
+}
+```
+
+| Field | Values |
+|-------|--------|
+| topic | `tx` (single swap), `multi_tx` (batch), `liq` (liquidity event) |
+| pair_address | Trading pair contract address |
+| chain | Chain identifier (e.g. `eth`, `bsc`, `solana`) |
+
+**Example event (`tx`):**
+```json
+{
+  "type": "tx",
+  "pair": "0xabc...",
+  "chain": "eth",
+  "time": 1710000000,
+  "tx_hash": "0xdef...",
+  "side": "buy",
+  "amount_usd": 1500.0,
+  "price": 0.00042,
+  "sender": "0x123..."
+}
+```
+
+### Subscribe: Live Kline Updates
+
+Subscribe message:
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "subscribe",
+  "params": ["kline", "<pair_address>", "<interval>", "<chain>"],
+  "id": 1
+}
+```
+
+| Field | Values |
+|-------|--------|
+| pair_address | Trading pair contract address |
+| interval | `s1`, `k1`, `k5`, `k15`, `k30`, `k60`, `k120`, `k240`, `k1440`, `k10080` |
+| chain | Chain identifier |
+
+**Example event:**
+```json
+{
+  "type": "kline",
+  "pair": "0xabc...",
+  "chain": "eth",
+  "interval": "k60",
+  "time": 1710000000,
+  "open": 0.00040,
+  "high": 0.00045,
+  "low": 0.00038,
+  "close": 0.00042,
+  "volume": 85000.0
+}
+```
+
+### Subscribe: Live Price Changes
+
+Subscribe message:
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "subscribe",
+  "params": ["price", ["<address>-<chain>", ...]],
+  "id": 1
+}
+```
+
+| Field | Values |
+|-------|--------|
+| token list | Array of `address-chain` strings (e.g. `["0xabc-eth", "0xdef-bsc"]`) |
+
+**Example event:**
+```json
+{
+  "type": "price",
+  "token_id": "0xabc-eth",
+  "price": 0.00042,
+  "price_change_5m": 0.8,
+  "price_change_1h": -1.2,
+  "time": 1710000000
+}
+```
+
+### Unsubscribe
+
+```json
+{ "jsonrpc": "2.0", "method": "unsubscribe", "params": [], "id": 2 }
+```
