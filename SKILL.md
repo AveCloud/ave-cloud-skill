@@ -1,6 +1,6 @@
 ---
-name: ave-cloud-skill
-version: 1.1.0
+name: ave-cloud
+version: 1.1.2
 description: |
   Query on-chain crypto data via the AVE Cloud API (https://cloud.ave.ai/).
   Use this skill whenever the user wants to:
@@ -16,12 +16,7 @@ description: |
   - Monitor live kline/candlestick updates for a pair in real time (pro plan)
   - Subscribe to live price change notifications for one or more tokens (pro plan)
   - Run an interactive WebSocket REPL to manage subscriptions live (pro plan)
-<<<<<<< Updated upstream
   Trigger on /ave-cloud or any query involving on-chain token data, DEX analytics,
-=======
-  Trigger on /ave-cloud-skill or any query involving on-chain token data, DEX analytics,
->>>>>>> Stashed changes
-  contract risk, or crypto market data across 130+ blockchains.
 metadata:
   openclaw:
     primaryEnv: AVE_API_KEY
@@ -55,17 +50,13 @@ Get a free key at https://cloud.ave.ai/register. For higher limits, contact supp
 
 ```bash
 # Build once
-docker build -f scripts/Dockerfile -t ave-cloud-skill .
+docker build -f scripts/Dockerfile.txt -t ave-cloud .
 
 # Run a command (example: search)
 docker run --rm \
   -e AVE_API_KEY="your_key" \
   -e API_PLAN=free \
-<<<<<<< Updated upstream
   ave-cloud search --keyword WBNB --chain bsc
-=======
-  ave-cloud-skill search --keyword WBNB --chain bsc
->>>>>>> Stashed changes
 ```
 
 The Docker image sets `AVE_USE_DOCKER=true` automatically, enabling in-process rate limiting via `requests-ratelimiter`. No volume mount needed.
@@ -209,11 +200,7 @@ Start a persistent WebSocket connection with an interactive command prompt:
 docker run -it \
   -e AVE_API_KEY="your_key" \
   -e API_PLAN=pro \
-<<<<<<< Updated upstream
   ave-cloud wss-repl
-=======
-  ave-cloud-skill wss-repl
->>>>>>> Stashed changes
 ```
 
 Or locally (requires `pip install -r scripts/requirements.txt`):
@@ -269,10 +256,6 @@ python scripts/ave_client.py watch-price --tokens <addr1>-<chain1> [<addr2>-<cha
 
 Multiple token IDs can be provided space-separated.
 
-<<<<<<< Updated upstream
-=======
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 ## Formatting responses
 
 When presenting results to the user:
