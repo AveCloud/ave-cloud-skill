@@ -76,6 +76,8 @@ def get_api_plan():
 def _make_session():
     """Build a requests session with rate limiting via requests-ratelimiter."""
     try:
+        import warnings
+        warnings.filterwarnings("ignore", message="urllib3 v2 only supports OpenSSL")
         from requests_ratelimiter import LimiterSession
     except ImportError:
         raise ImportError(
