@@ -2,7 +2,7 @@
 name: ave-cloud
 version: 1.0.0
 description: |
-  Query on-chain crypto data via the AVE Cloud Data API (https://cloud.ave.ai/).
+  Query on-chain crypto data via the AVE Cloud API (https://cloud.ave.ai/).
   Use this skill whenever the user wants to:
   - Search for tokens by name, symbol, or contract address
   - Get token prices, market cap, TVL, volume, or price change data
@@ -12,6 +12,10 @@ description: |
   - View trending or ranked tokens by chain or topic (hot, meme, gainer, loser, AI, DePIN, etc.)
   - Run a contract security/risk detection report (honeypot, tax, ownership)
   - List supported chains or main tokens on a chain
+  - Stream real-time swap/liquidity events for a trading pair (pro plan)
+  - Monitor live kline/candlestick updates for a pair in real time (pro plan)
+  - Subscribe to live price change notifications for one or more tokens (pro plan)
+  - Run an interactive WebSocket REPL to manage subscriptions live (pro plan)
   Trigger on /ave-cloud or any query involving on-chain token data, DEX analytics,
   contract risk, or crypto market data across 130+ blockchains.
 metadata:
@@ -20,7 +24,7 @@ metadata:
     requires:
       env:
         - AVE_API_KEY
-        - API-PLAN
+        - API_PLAN
       bins:
         - python3
 ---
@@ -36,7 +40,7 @@ Two environment variables are required:
 
 ```bash
 export AVE_API_KEY="your_api_key_here"
-export API-PLAN="free"   # allowed: free, normal, pro
+export API_PLAN="free"   # allowed: free, normal, pro
 ```
 
 Get a free key at https://cloud.ave.ai/register. For higher limits, contact support on Telegram: @ave_ai_cloud.
@@ -52,7 +56,7 @@ docker build -f scripts/Dockerfile -t ave-cloud .
 # Run a command (example: search)
 docker run --rm \
   -e AVE_API_KEY="your_key" \
-  -e API-PLAN=free \
+  -e API_PLAN=free \
   ave-cloud search --keyword WBNB --chain bsc
 ```
 
@@ -184,6 +188,75 @@ The primary/native tokens for a given chain.
 python scripts/ave_client.py main-tokens --chain <chain>
 ```
 
+## WebSocket Streams (pro plan)
+
+Real-time data streams require `API_PLAN=pro` and `websocket-client` installed (`pip install -r scripts/requirements.txt`).
+Each event is printed as pretty-printed JSON followed by `---`. Press Ctrl+C to stop.
+
+### Interactive REPL (recommended for live monitoring)
+
+Start a persistent WebSocket connection with an interactive command prompt:
+
+```bash
+docker run -it \
+  -e AVE_API_KEY="your_key" \
+  -e API_PLAN=pro \
+  ave-cloud wss-repl
+```
+
+Or locally (requires `pip install -r scripts/requirements.txt`):
+
+```bash
+API_PLAN=pro AVE_API_KEY="your_key" python scripts/ave_client.py wss-repl
+```
+
+Once connected, type commands at the `>` prompt. JSON events stream to stdout; UI messages go to stderr.
+
+| Command | Description |
+|---------|-------------|
+| `subscribe price <addr-chain> [...]` | Live price updates for one or more tokens |
+| `subscribe tx <pair> <chain> [tx\|multi_tx\|liq]` | Swaps or liquidity events for a pair |
+| `subscribe kline <pair> <chain> [interval]` | Kline candle updates for a pair |
+| `unsubscribe` | Cancel current subscription |
+| `help` | Show command reference |
+| `quit` | Close connection and exit |
+
+Example session:
+```
+> subscribe price 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2-eth
+{...price event...}
+---
+> unsubscribe
+> subscribe kline 0xabc-eth solana k5
+{...kline event...}
+---
+> quit
+```
+
+### Stream live swap/liquidity events for a pair
+
+```bash
+python scripts/ave_client.py watch-tx --address <pair_address> --chain <chain> [--topic tx]
+```
+
+`--topic` choices: `tx` (swaps, default), `multi_tx` (batch swaps), `liq` (liquidity add/remove)
+
+### Stream live kline updates for a pair
+
+```bash
+python scripts/ave_client.py watch-kline --address <pair_address> --chain <chain> [--interval k60]
+```
+
+`--interval` choices: `s1 k1 k5 k15 k30 k60 k120 k240 k1440 k10080`
+
+### Stream live price changes for tokens
+
+```bash
+python scripts/ave_client.py watch-price --tokens <addr1>-<chain1> [<addr2>-<chain2> ...]
+```
+
+Multiple token IDs can be provided space-separated.
+
 ## Formatting responses
 
 When presenting results to the user:
@@ -195,6 +268,7 @@ When presenting results to the user:
 - **Trending/ranks**: show as a ranked table with price, 24h change, volume
 - **Risk report**: lead with the risk level (LOW/MEDIUM/HIGH/CRITICAL), then key findings (honeypot, tax rates, ownership renounced/not)
 - **Search results**: show as a table — symbol, name, chain, contract address, price, 24h change
+- **WebSocket streams**: each event arrives as a JSON object; summarize key fields (time, type, price, amount) as they arrive; for `wss-repl`, remind the user to type `quit` or Ctrl+C to stop
 
 If a chain identifier is unclear, run `chains` first to look it up.
 

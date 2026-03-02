@@ -2,20 +2,25 @@
 """AVE Cloud Data API client CLI.
 
 Usage: python ave_client.py <command> [options]
-Requires: AVE_API_KEY and API-PLAN environment variables
+Requires: AVE_API_KEY and API_PLAN environment variables
 """
 
 import argparse
 import fcntl
 import json
 import os
+import shlex
+import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 
 V2_BASE = "https://data.ave-api.xyz/v2"
+WSS_BASE = "wss://wss.ave-api.xyz"
+VALID_WSS_INTERVALS = ("s1", "k1", "k5", "k15", "k30", "k60", "k120", "k240", "k1440", "k10080")
 
 VALID_PLANS = ("free", "normal", "pro")
 
@@ -54,6 +59,9 @@ RATE_LIMIT_FILE = "/tmp/ave_client_last_request"
 # Set AVE_USE_DOCKER=true to use requests + requests-ratelimiter (installed in Docker).
 # Default (false): uses stdlib urllib with built-in file-based rate limiter.
 USE_DOCKER = os.environ.get("AVE_USE_DOCKER", "").lower() in ("1", "true", "yes")
+IN_SERVER = os.environ.get("AVE_IN_SERVER", "").lower() in ("1", "true", "yes")
+SERVER_CONTAINER = "ave-cloud-server"
+SERVER_FIFO = "/tmp/ave_pipe"
 
 
 def get_api_key():
@@ -66,9 +74,9 @@ def get_api_key():
 
 
 def get_api_plan():
-    plan = os.environ.get("API-PLAN", "free")
+    plan = os.environ.get("API_PLAN", "free")
     if plan not in VALID_PLANS:
-        print(f"Error: API-PLAN must be one of: {', '.join(VALID_PLANS)}", file=sys.stderr)
+        print(f"Error: API_PLAN must be one of: {', '.join(VALID_PLANS)}", file=sys.stderr)
         sys.exit(1)
     return plan
 
@@ -90,7 +98,9 @@ def _make_session():
     return LimiterSession(per_second=rps)
 
 
-_session = _make_session() if USE_DOCKER else None
+# Pro+docker host mode routes all commands to the server; no local session needed.
+_needs_session = USE_DOCKER and (IN_SERVER or os.environ.get("API_PLAN", "free") != "pro")
+_session = _make_session() if _needs_session else None
 
 
 def _builtin_rate_limit():
@@ -173,6 +183,87 @@ def handle_response(resp):
     print(json.dumps(resp.json(), indent=2))
 
 
+def _require_pro():
+    if get_api_plan() != "pro":
+        print("Error: WebSocket subscriptions require API_PLAN=pro.", file=sys.stderr)
+        sys.exit(1)
+
+
+def _require_docker():
+    if not USE_DOCKER:
+        print("Error: API_PLAN=pro requires AVE_USE_DOCKER=true.", file=sys.stderr)
+        sys.exit(1)
+
+
+def _server_is_running():
+    r = subprocess.run(
+        ["docker", "inspect", "--format={{.State.Running}}", SERVER_CONTAINER],
+        capture_output=True, text=True,
+    )
+    return r.returncode == 0 and r.stdout.strip() == "true"
+
+
+def _exec_in_server(argv):
+    """Run a REST command inside the server container; stream output to host."""
+    result = subprocess.run(
+        ["docker", "exec", SERVER_CONTAINER, "python", "scripts/ave_client.py"] + list(argv),
+    )
+    sys.exit(result.returncode)
+
+
+def _send_to_server(line):
+    """Write a subscribe/unsubscribe line to the server's FIFO."""
+    result = subprocess.run(
+        ["docker", "exec", SERVER_CONTAINER, "sh", "-c",
+         f"echo {shlex.quote(line)} > {SERVER_FIFO}"],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        print(f"Error sending to server: {result.stderr}", file=sys.stderr)
+        sys.exit(1)
+    print(f"Sent. Watch events: docker logs -f {SERVER_CONTAINER}", file=sys.stderr)
+
+
+def _wss_on_message(ws, message):
+    try:
+        print(json.dumps(json.loads(message), indent=2), flush=True)
+        print("---", flush=True)
+    except json.JSONDecodeError:
+        print(message, flush=True)
+
+
+def _wss_connect(on_open):
+    _require_pro()
+    try:
+        import websocket
+    except ImportError:
+        print(
+            "Error: websocket-client is not installed.\n"
+            "Run: pip install -r scripts/requirements.txt",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    def on_error(ws, error):
+        print(f"WebSocket error: {error}", file=sys.stderr)
+
+    def on_close(ws, close_status_code, close_msg):
+        print("\nConnection closed.", file=sys.stderr)
+
+    ws = websocket.WebSocketApp(
+        WSS_BASE,
+        header={"X-API-KEY": get_api_key()},
+        on_open=on_open,
+        on_message=_wss_on_message,
+        on_error=on_error,
+        on_close=on_close,
+    )
+    try:
+        ws.run_forever(ping_interval=30, ping_timeout=10)
+    except KeyboardInterrupt:
+        ws.close()
+
+
 def cmd_search(args):
     params = {"keyword": args.keyword, "limit": args.limit}
     if args.chain:
@@ -247,6 +338,282 @@ def cmd_main_tokens(args):
     handle_response(api_get("/tokens/main", {"chain": args.chain}))
 
 
+def cmd_watch_tx(args):
+    def on_open(ws):
+        ws.send(json.dumps({
+            "jsonrpc": "2.0", "method": "subscribe",
+            "params": [args.topic, args.address, args.chain], "id": 1,
+        }))
+    _wss_connect(on_open)
+
+
+def cmd_watch_kline(args):
+    def on_open(ws):
+        ws.send(json.dumps({
+            "jsonrpc": "2.0", "method": "subscribe",
+            "params": ["kline", args.address, args.interval, args.chain], "id": 1,
+        }))
+    _wss_connect(on_open)
+
+
+def cmd_watch_price(args):
+    def on_open(ws):
+        ws.send(json.dumps({
+            "jsonrpc": "2.0", "method": "subscribe",
+            "params": ["price", args.tokens], "id": 1,
+        }))
+    _wss_connect(on_open)
+
+
+def cmd_wss_repl(args):
+    _require_pro()
+    try:
+        import websocket
+    except ImportError:
+        print(
+            "Error: websocket-client is not installed.\n"
+            "Run: pip install -r scripts/requirements.txt",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    ws_ref = [None]
+    connected = threading.Event()
+    msg_id = [0]
+
+    def next_id():
+        msg_id[0] += 1
+        return msg_id[0]
+
+    def on_open(ws):
+        ws_ref[0] = ws
+        connected.set()
+
+    def on_error(ws, error):
+        print(f"\nWebSocket error: {error}", file=sys.stderr)
+
+    def on_close(ws, close_status_code, close_msg):
+        print("\nConnection closed.", file=sys.stderr)
+        connected.clear()
+
+    ws = websocket.WebSocketApp(
+        WSS_BASE,
+        header={"X-API-KEY": get_api_key()},
+        on_open=on_open,
+        on_message=_wss_on_message,
+        on_error=on_error,
+        on_close=on_close,
+    )
+    t = threading.Thread(
+        target=ws.run_forever,
+        kwargs={"ping_interval": 30, "ping_timeout": 10},
+        daemon=True,
+    )
+    t.start()
+
+    if not connected.wait(timeout=10):
+        print("Error: failed to connect within 10s.", file=sys.stderr)
+        sys.exit(1)
+
+    print("Connected. Type 'help' for commands.", file=sys.stderr)
+
+    try:
+        while True:
+            try:
+                line = input("\n> ").strip()
+            except EOFError:
+                break
+            if not line:
+                continue
+            parts = line.split()
+            cmd = parts[0].lower()
+
+            if cmd in ("quit", "exit", "q"):
+                break
+            elif cmd == "help":
+                print(
+                    "Commands:\n"
+                    "  subscribe price <addr-chain> [<addr-chain> ...]\n"
+                    "  subscribe tx <pair_address> <chain> [tx|multi_tx|liq]\n"
+                    "  subscribe kline <pair_address> <chain> [interval]\n"
+                    "  unsubscribe\n"
+                    "  quit",
+                    file=sys.stderr,
+                )
+            elif cmd == "subscribe":
+                if len(parts) < 2:
+                    print("Usage: subscribe <topic> [args...]", file=sys.stderr)
+                    continue
+                topic = parts[1]
+                if topic == "price":
+                    tokens = parts[2:]
+                    if not tokens:
+                        print("Usage: subscribe price <addr-chain> [...]", file=sys.stderr)
+                        continue
+                    ws_ref[0].send(json.dumps({
+                        "jsonrpc": "2.0", "method": "subscribe",
+                        "params": ["price", tokens], "id": next_id(),
+                    }))
+                elif topic in ("tx", "multi_tx", "liq"):
+                    if len(parts) < 4:
+                        print("Usage: subscribe tx|multi_tx|liq <pair_address> <chain>", file=sys.stderr)
+                        continue
+                    address, chain = parts[2], parts[3]
+                    ws_ref[0].send(json.dumps({
+                        "jsonrpc": "2.0", "method": "subscribe",
+                        "params": [topic, address, chain], "id": next_id(),
+                    }))
+                elif topic == "kline":
+                    if len(parts) < 4:
+                        print("Usage: subscribe kline <pair_address> <chain> [interval]", file=sys.stderr)
+                        continue
+                    address, chain = parts[2], parts[3]
+                    interval = parts[4] if len(parts) > 4 else "k60"
+                    ws_ref[0].send(json.dumps({
+                        "jsonrpc": "2.0", "method": "subscribe",
+                        "params": ["kline", address, interval, chain], "id": next_id(),
+                    }))
+                else:
+                    print(f"Unknown topic: {topic!r}. Topics: price, tx, multi_tx, liq, kline", file=sys.stderr)
+            elif cmd == "unsubscribe":
+                ws_ref[0].send(json.dumps({
+                    "jsonrpc": "2.0", "method": "unsubscribe",
+                    "params": [], "id": next_id(),
+                }))
+            else:
+                print(f"Unknown command: {cmd!r}. Type 'help'.", file=sys.stderr)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        ws.close()
+
+
+def cmd_serve(args):
+    _require_pro()
+    try:
+        import websocket
+    except ImportError:
+        print("Error: websocket-client is not installed.", file=sys.stderr)
+        sys.exit(1)
+
+    if os.path.exists(SERVER_FIFO):
+        os.remove(SERVER_FIFO)
+    os.mkfifo(SERVER_FIFO)
+
+    ws_ref = [None]
+    connected = threading.Event()
+    msg_id = [0]
+
+    def next_id():
+        msg_id[0] += 1
+        return msg_id[0]
+
+    def on_open(ws):
+        ws_ref[0] = ws
+        connected.set()
+
+    def on_error(ws, error):
+        print(f"WebSocket error: {error}", file=sys.stderr, flush=True)
+
+    def on_close(ws, code, msg):
+        print("WebSocket closed.", file=sys.stderr, flush=True)
+        connected.clear()
+
+    ws = websocket.WebSocketApp(
+        WSS_BASE,
+        header={"X-API-KEY": get_api_key()},
+        on_open=on_open,
+        on_message=_wss_on_message,
+        on_error=on_error,
+        on_close=on_close,
+    )
+    t = threading.Thread(
+        target=ws.run_forever,
+        kwargs={"ping_interval": 30, "ping_timeout": 10},
+        daemon=True,
+    )
+    t.start()
+
+    if not connected.wait(timeout=10):
+        print("Error: WebSocket connection timeout.", file=sys.stderr)
+        sys.exit(1)
+
+    print("Server ready.", file=sys.stderr, flush=True)
+
+    def _process_cmd(line):
+        parts = line.split()
+        if not parts:
+            return
+        cmd = parts[0].lower()
+        if cmd == "subscribe" and len(parts) >= 2:
+            topic = parts[1]
+            if topic == "price" and len(parts) >= 3:
+                ws_ref[0].send(json.dumps({
+                    "jsonrpc": "2.0", "method": "subscribe",
+                    "params": ["price", parts[2:]], "id": next_id(),
+                }))
+            elif topic in ("tx", "multi_tx", "liq") and len(parts) >= 4:
+                ws_ref[0].send(json.dumps({
+                    "jsonrpc": "2.0", "method": "subscribe",
+                    "params": [topic, parts[2], parts[3]], "id": next_id(),
+                }))
+            elif topic == "kline" and len(parts) >= 4:
+                interval = parts[4] if len(parts) > 4 else "k60"
+                ws_ref[0].send(json.dumps({
+                    "jsonrpc": "2.0", "method": "subscribe",
+                    "params": ["kline", parts[2], interval, parts[3]], "id": next_id(),
+                }))
+            print(f"Subscribed: {' '.join(parts[1:])}", file=sys.stderr, flush=True)
+        elif cmd == "unsubscribe":
+            ws_ref[0].send(json.dumps({
+                "jsonrpc": "2.0", "method": "unsubscribe",
+                "params": [], "id": next_id(),
+            }))
+            print("Unsubscribed.", file=sys.stderr, flush=True)
+
+    try:
+        while True:
+            with open(SERVER_FIFO, "r") as pipe:
+                for raw in pipe:
+                    _process_cmd(raw.strip())
+    except KeyboardInterrupt:
+        ws.close()
+
+
+def cmd_start_server(args):
+    _require_pro()
+    _require_docker()
+    if _server_is_running():
+        print(f"Server already running: {SERVER_CONTAINER}", file=sys.stderr)
+        return
+    subprocess.run(["docker", "rm", "-f", SERVER_CONTAINER], capture_output=True)
+    key = get_api_key()
+    result = subprocess.run([
+        "docker", "run", "-d", "--name", SERVER_CONTAINER,
+        "-e", f"AVE_API_KEY={key}",
+        "-e", "API_PLAN=pro",
+        "-e", "AVE_USE_DOCKER=true",
+        "-e", "AVE_IN_SERVER=true",
+        "ave-cloud", "serve",
+    ], capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"Error: {result.stderr}", file=sys.stderr)
+        sys.exit(1)
+    print(f"Started ({result.stdout.strip()[:12]}). Logs: docker logs -f {SERVER_CONTAINER}",
+          file=sys.stderr)
+
+
+def cmd_stop_server(args):
+    result = subprocess.run(
+        ["docker", "rm", "-f", SERVER_CONTAINER], capture_output=True, text=True,
+    )
+    if result.returncode == 0:
+        print(f"Server stopped: {SERVER_CONTAINER}", file=sys.stderr)
+    else:
+        print(f"Error: {result.stderr}", file=sys.stderr)
+        sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(description="AVE Cloud Data API client")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -313,7 +680,57 @@ def main():
     p = sub.add_parser("main-tokens", help="Get main tokens for a chain")
     p.add_argument("--chain", required=True)
 
+    p = sub.add_parser("watch-tx", help="Stream live swap/liquidity events (pro plan)")
+    p.add_argument("--address", required=True)
+    p.add_argument("--chain", required=True)
+    p.add_argument("--topic", default="tx", choices=["tx", "multi_tx", "liq"])
+
+    p = sub.add_parser("watch-kline", help="Stream live kline updates for a pair (pro plan)")
+    p.add_argument("--address", required=True)
+    p.add_argument("--chain", required=True)
+    p.add_argument("--interval", default="k60", choices=list(VALID_WSS_INTERVALS))
+
+    p = sub.add_parser("watch-price", help="Stream live price changes for tokens (pro plan)")
+    p.add_argument("--tokens", required=True, nargs="+", metavar="ADDRESS-CHAIN")
+
+    sub.add_parser("wss-repl", help="Interactive WebSocket REPL — subscribe/unsubscribe on demand (pro plan)")
+
+    sub.add_parser("serve", help="Run persistent WebSocket server daemon inside container (pro plan)")
+    sub.add_parser("start-server", help="Start persistent server container (pro plan)")
+    sub.add_parser("stop-server", help="Stop persistent server container")
+
     args = parser.parse_args()
+
+    _DIRECT = {"start-server", "stop-server", "serve"}
+
+    if get_api_plan() == "pro" and not IN_SERVER:
+        _require_docker()
+        if args.command not in _DIRECT:
+            if not _server_is_running():
+                print(
+                    f"Error: server not running.\n"
+                    f"Run: AVE_USE_DOCKER=true API_PLAN=pro AVE_API_KEY=... "
+                    f"python scripts/ave_client.py start-server",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            if args.command == "watch-tx":
+                _send_to_server(f"subscribe {args.topic} {args.address} {args.chain}")
+                return
+            if args.command == "watch-kline":
+                _send_to_server(f"subscribe kline {args.address} {args.chain} {args.interval}")
+                return
+            if args.command == "watch-price":
+                _send_to_server("subscribe price " + " ".join(args.tokens))
+                return
+            if args.command == "wss-repl":
+                r = subprocess.run(
+                    ["docker", "exec", "-it", SERVER_CONTAINER,
+                     "python", "scripts/ave_client.py", "wss-repl"],
+                )
+                sys.exit(r.returncode)
+            _exec_in_server(sys.argv[1:])
+            return
 
     commands = {
         "search": cmd_search,
@@ -330,6 +747,13 @@ def main():
         "risk": cmd_risk,
         "chains": cmd_chains,
         "main-tokens": cmd_main_tokens,
+        "watch-tx": cmd_watch_tx,
+        "watch-kline": cmd_watch_kline,
+        "watch-price": cmd_watch_price,
+        "wss-repl": cmd_wss_repl,
+        "serve": cmd_serve,
+        "start-server": cmd_start_server,
+        "stop-server": cmd_stop_server,
     }
 
     commands[args.command](args)
