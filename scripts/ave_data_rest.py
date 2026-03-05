@@ -60,6 +60,107 @@ IN_SERVER = os.environ.get("AVE_IN_SERVER", "").lower() in ("1", "true", "yes")
 SERVER_CONTAINER = "ave-cloud-server"
 SERVER_FIFO = "/tmp/ave_pipe"
 
+_DOCKER_MODE_FILE = os.path.expanduser("~/.ave_cloud_docker_mode")
+
+
+def _ask_docker_mode():
+    """Prompt user for docker vs host mode. Saves choice. Returns True for Docker."""
+    if os.path.exists(_DOCKER_MODE_FILE):
+        try:
+            saved = open(_DOCKER_MODE_FILE).read().strip()
+            if saved in ("true", "false"):
+                return saved == "true"
+        except OSError:
+            pass
+    if not sys.stdin.isatty():
+        return True
+    sys.stderr.write(
+        "\nAVE_USE_DOCKER is not set. Choose execution mode:\n"
+        "  [1] Docker (recommended) — run inside Docker container\n"
+        "  [2] Host — install requirements.txt and run directly\n"
+        "Choice [1]: "
+    )
+    sys.stderr.flush()
+    try:
+        answer = sys.stdin.readline().strip()
+    except (EOFError, KeyboardInterrupt):
+        answer = ""
+    use_docker = answer != "2"
+    try:
+        with open(_DOCKER_MODE_FILE, "w") as f:
+            f.write("true" if use_docker else "false")
+        print(
+            f"Saved. To reset: rm {_DOCKER_MODE_FILE}  or set AVE_USE_DOCKER=true/false.",
+            file=sys.stderr,
+        )
+    except OSError:
+        pass
+    return use_docker
+
+
+def _ensure_docker_image():
+    r = subprocess.run(["docker", "image", "inspect", "ave-cloud"], capture_output=True)
+    if r.returncode != 0:
+        print("Building Docker image 'ave-cloud'...", file=sys.stderr)
+        r2 = subprocess.run(
+            ["docker", "build", "-f", "scripts/Dockerfile.txt", "-t", "ave-cloud", "."]
+        )
+        if r2.returncode != 0:
+            print("Error: Docker build failed.", file=sys.stderr)
+            sys.exit(1)
+
+
+def _reexec_in_docker(script_name):
+    """Re-run this command inside a one-shot Docker container and exit."""
+    _ensure_docker_image()
+    env_args = []
+    for var in (
+        "AVE_API_KEY", "API_PLAN", "AVE_SECRET_KEY",
+        "AVE_EVM_PRIVATE_KEY", "AVE_SOLANA_PRIVATE_KEY", "AVE_MNEMONIC",
+        "AVE_BSC_RPC_URL", "AVE_ETH_RPC_URL", "AVE_BASE_RPC_URL",
+    ):
+        val = os.environ.get(var)
+        if val:
+            env_args += ["-e", f"{var}={val}"]
+    result = subprocess.run([
+        "docker", "run", "--rm",
+        "--entrypoint", "python",
+        "-e", "AVE_USE_DOCKER=true",
+        "-e", "AVE_IN_SERVER=true",
+        *env_args,
+        "ave-cloud", f"scripts/{script_name}",
+        *sys.argv[1:],
+    ])
+    sys.exit(result.returncode)
+
+
+def _ensure_requirements():
+    """Pip-install requirements.txt if requests is not available."""
+    try:
+        import requests  # noqa: F401
+    except ImportError:
+        req = os.path.join(os.path.dirname(os.path.abspath(__file__)), "requirements.txt")
+        print(f"Installing {req}...", file=sys.stderr)
+        r = subprocess.run([sys.executable, "-m", "pip", "install", "-r", req])
+        if r.returncode != 0:
+            print("Error: pip install failed.", file=sys.stderr)
+            sys.exit(1)
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+
+
+def _docker_gate(script_name):
+    """Determine exec mode from AVE_USE_DOCKER (or prompt). Must be called before work starts."""
+    env_val = os.environ.get("AVE_USE_DOCKER", "").lower()
+    if env_val in ("1", "true", "yes"):
+        _reexec_in_docker(script_name)
+    elif env_val in ("0", "false", "no"):
+        _ensure_requirements()
+    else:
+        if _ask_docker_mode():
+            _reexec_in_docker(script_name)
+        else:
+            _ensure_requirements()
+
 
 def get_api_key():
     key = os.environ.get("AVE_API_KEY")
@@ -273,6 +374,9 @@ def cmd_main_tokens(args):
 
 
 def main():
+    if not IN_SERVER:
+        _docker_gate("ave_data_rest.py")
+
     parser = argparse.ArgumentParser(description="AVE Cloud Data REST API client")
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -338,22 +442,10 @@ def main():
     p = sub.add_parser("main-tokens", help="Get main tokens for a chain")
     p.add_argument("--chain", required=True)
 
-    args = parser.parse_args()
+    if not IN_SERVER:
+        _docker_gate("ave_data_rest.py")
 
-    if get_api_plan() == "pro" and not IN_SERVER:
-        if not USE_DOCKER:
-            print("Error: API_PLAN=pro requires AVE_USE_DOCKER=true.", file=sys.stderr)
-            sys.exit(1)
-        if not _server_is_running():
-            print(
-                "Error: server not running.\n"
-                "Run: AVE_USE_DOCKER=true API_PLAN=pro AVE_API_KEY=... "
-                "python scripts/ave_data_wss.py start-server",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-        _exec_in_server(sys.argv[1:])
-        return
+    args = parser.parse_args()
 
     commands = {
         "search": cmd_search,
