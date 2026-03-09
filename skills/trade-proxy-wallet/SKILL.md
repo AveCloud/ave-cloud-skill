@@ -65,6 +65,15 @@ Get keys at https://cloud.ave.ai/register. Proxy Wallet API must be activated on
 
 `bsc`, `eth`, `base`, `solana`
 
+## First-Turn Playbook
+
+For a new proxy-wallet trading request:
+
+1. Verify whether the user already has an `assetsId`; if not, create a disposable wallet first
+2. Check that the proxy wallet is funded on the target chain before placing a real order
+3. Use the smallest practical real order size, and respect chain-specific minimums
+4. Open `watch-orders` when live status feedback is useful, but still confirm by querying order IDs directly
+
 ## Wallet Management
 
 ```bash
@@ -191,6 +200,17 @@ Connects to `wss://bot-api.ave.ai/thirdws?ave_access_key={AVE_API_KEY}`, subscri
 Each push message includes: `id`, `status`, `chain`, `assetsId`, `orderType`, `swapType`, `txHash`, `errorMessage`.
 
 Press Ctrl+C to stop.
+
+## Response Contract
+
+After every proxy-wallet action, answer in this order:
+
+1. Outcome: wallet created, order submitted, order confirmed, order failed, or order cancelled
+2. Funding or spend context: which wallet, which chain, and how much was used
+3. Identifiers: `assetsId`, order ID, and tx hash if confirmed
+4. Next step: poll order, watch `botswap`, place the sell-back, or clean up the wallet
+
+Treat WebSocket events as confirmation aids, not as the only evidence of final status.
 
 ## Reference
 
