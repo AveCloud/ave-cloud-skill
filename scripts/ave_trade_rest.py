@@ -396,6 +396,16 @@ def _get_required_evm_rpc_url(chain: str, cli_rpc_url) -> str:
     )
 
 
+def _validate_fee_recipient_args(args):
+    has_recipient = bool(getattr(args, "fee_recipient", None))
+    has_rate = bool(getattr(args, "fee_recipient_rate", None))
+    if has_recipient != has_rate:
+        raise ValueError(
+            "feeRecipient and feeRecipientRate must be provided together. "
+            "Set both, or omit both."
+        )
+
+
 def _sign_solana_tx(tx_content_b64: str, keypair) -> str:
     try:
         from solders.message import MessageV0
@@ -423,6 +433,7 @@ def cmd_quote(args):
 
 
 def cmd_create_evm_tx(args):
+    _validate_fee_recipient_args(args)
     payload = {
         "chain": args.chain,
         "creatorAddress": args.creator_address,
@@ -453,6 +464,7 @@ def cmd_send_evm_tx(args):
 
 
 def cmd_create_solana_tx(args):
+    _validate_fee_recipient_args(args)
     payload = {
         "creatorAddress": args.creator_address,
         "inAmount": args.in_amount,
@@ -484,6 +496,7 @@ def cmd_send_solana_tx(args):
 
 
 def cmd_swap_evm(args):
+    _validate_fee_recipient_args(args)
     account = _get_evm_account()
     creator_address = account.address
     rpc_url = _get_required_evm_rpc_url(args.chain, args.rpc_url)
@@ -549,6 +562,7 @@ def cmd_swap_evm(args):
 
 
 def cmd_swap_solana(args):
+    _validate_fee_recipient_args(args)
     keypair = _get_solana_keypair()
     creator_address = str(keypair.pubkey())
 

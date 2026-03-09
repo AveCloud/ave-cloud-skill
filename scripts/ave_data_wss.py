@@ -7,11 +7,13 @@ Requires: AVE_API_KEY and API_PLAN=pro environment variables
 
 import argparse
 import json
+import math
 import os
 import shlex
 import subprocess
 import sys
 import threading
+from collections import deque
 
 _dir = os.path.dirname(os.path.abspath(__file__))
 if _dir not in sys.path:
@@ -19,7 +21,7 @@ if _dir not in sys.path:
 
 from ave_data_rest import (
     get_api_key, get_api_plan, USE_DOCKER, IN_SERVER, SERVER_CONTAINER,
-    SERVER_FIFO, WSS_BASE, VALID_WSS_INTERVALS, _server_is_running,
+    SERVER_FIFO, WSS_BASE, VALID_WSS_INTERVALS, _ensure_docker_image, _server_is_running,
 )
 
 
@@ -47,6 +49,212 @@ def _send_to_server(line):
     print(f"Sent. Watch events: docker logs -f {SERVER_CONTAINER}", file=sys.stderr)
 
 
+def _exec_in_server(args_list):
+    cmd = ["docker", "exec"]
+    if sys.stdin.isatty() and sys.stdout.isatty():
+        cmd.append("-it")
+    cmd.extend([SERVER_CONTAINER, "python", "scripts/ave_data_wss.py", *args_list])
+    result = subprocess.run(cmd)
+    sys.exit(result.returncode)
+
+
+def _exec_in_ephemeral_container(args_list):
+    _ensure_docker_image()
+    cmd = ["docker", "run", "--rm"]
+    if sys.stdin.isatty():
+        cmd.append("-i")
+    if sys.stdin.isatty() and sys.stdout.isatty():
+        cmd.append("-t")
+    cmd.extend([
+        "-e", f"AVE_API_KEY={get_api_key()}",
+        "-e", "API_PLAN=pro",
+        "-e", "AVE_USE_DOCKER=true",
+        "-e", "AVE_IN_SERVER=true",
+        "ave-cloud",
+        "python",
+        "scripts/ave_data_wss.py",
+        *args_list,
+    ])
+    result = subprocess.run(cmd)
+    sys.exit(result.returncode)
+
+
+def _interval_label(interval):
+    if interval == "s1":
+        return "1s"
+    if interval.startswith("k"):
+        minutes = int(interval[1:])
+        if minutes == 1440:
+            return "1d"
+        if minutes == 10080:
+            return "1w"
+        if minutes % 60 == 0:
+            return f"{minutes // 60}h"
+        return f"{minutes}m"
+    return interval
+
+
+def _format_small_number(value):
+    if value is None:
+        return "n/a"
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if number == 0:
+        return "0"
+    abs_number = abs(number)
+    if abs_number >= 1:
+        return f"{number:,.6f}".rstrip("0").rstrip(".")
+    if abs_number >= 0.001:
+        return f"{number:.8f}".rstrip("0").rstrip(".")
+    raw = f"{abs_number:.12f}".split(".")[1]
+    zero_count = 0
+    for ch in raw:
+        if ch == "0":
+            zero_count += 1
+        else:
+            break
+    significant = raw[zero_count:zero_count + 4] or "0"
+    prefix = "-" if number < 0 else ""
+    return f"{prefix}0.0{{{zero_count}}}{significant}"
+
+
+def _format_usd(value):
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    abs_number = abs(number)
+    if abs_number >= 1_000_000_000:
+        return f"${number / 1_000_000_000:.2f}B"
+    if abs_number >= 1_000_000:
+        return f"${number / 1_000_000:.2f}M"
+    if abs_number >= 1_000:
+        return f"${number / 1_000:.2f}K"
+    return f"${number:.2f}"
+
+
+def _extract_kline_event(message):
+    try:
+        body = json.loads(message)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(body, dict):
+        return None
+    if body.get("type") == "kline":
+        return body
+    params = body.get("params")
+    if isinstance(params, dict) and params.get("type") == "kline":
+        return params
+    result = body.get("result")
+    if isinstance(result, dict) and result.get("type") == "kline":
+        return result
+    if isinstance(result, dict) and result.get("topic") == "kline" and isinstance(result.get("kline"), dict):
+        source = result["kline"].get("usd") or result["kline"].get("eth")
+        if isinstance(source, dict):
+            pair_id = result.get("id", "pair")
+            chain = "?"
+            pair = pair_id
+            if isinstance(pair_id, str) and "-" in pair_id:
+                pair, chain = pair_id.rsplit("-", 1)
+            return {
+                "type": "kline",
+                "pair": pair,
+                "chain": chain,
+                "interval": result.get("interval"),
+                "time": source.get("time"),
+                "open": source.get("open"),
+                "high": source.get("high"),
+                "low": source.get("low"),
+                "close": source.get("close"),
+                "volume": source.get("volume"),
+            }
+    data = body.get("data")
+    if isinstance(data, dict) and data.get("type") == "kline":
+        return data
+    return None
+
+
+def _sparkline_rows(values, rows=5, width=20):
+    clean = []
+    for value in values:
+        try:
+            clean.append(float(value))
+        except (TypeError, ValueError):
+            continue
+    if not clean:
+        return []
+    if len(clean) > width:
+        clean = clean[-width:]
+    low = min(clean)
+    high = max(clean)
+    if math.isclose(high, low):
+        label = _format_small_number(high)
+        return [f"{label:>12} | {'─' * len(clean)}"]
+
+    levels = [high - (high - low) * idx / (rows - 1) for idx in range(rows)]
+    chars = []
+    for level in levels:
+        row = []
+        for value in clean:
+            if value >= level:
+                row.append("█")
+            else:
+                row.append(" ")
+        chars.append(f"{_format_small_number(level):>12} | {''.join(row).rstrip()}")
+    return chars
+
+
+class _KlineFormatter:
+    def __init__(self, history=20):
+        self.closes = deque(maxlen=history)
+
+    def render(self, event):
+        close = event.get("close")
+        self.closes.append(close)
+        open_value = event.get("open")
+        high = event.get("high")
+        low = event.get("low")
+        volume = event.get("volume")
+        pair = event.get("pair", "pair")
+        chain = event.get("chain", "?")
+        interval = _interval_label(event.get("interval", "?"))
+
+        pct = None
+        try:
+            open_float = float(open_value)
+            close_float = float(close)
+            if open_float:
+                pct = (close_float - open_float) / open_float * 100
+        except (TypeError, ValueError, ZeroDivisionError):
+            pct = None
+
+        direction = "flat"
+        if pct is not None:
+            if pct > 0:
+                direction = "up candle"
+            elif pct < 0:
+                direction = "down candle"
+
+        lines = [
+            f"[{chain}] {pair} {interval}",
+            (
+                f"O: {_format_small_number(open_value)}  "
+                f"H: {_format_small_number(high)}  "
+                f"L: {_format_small_number(low)}  "
+                f"C: {_format_small_number(close)}"
+            ),
+        ]
+        if pct is not None:
+            lines.append(f"Move: {pct:+.2f}%   Vol: {_format_usd(volume)}   Trend: {direction}")
+        else:
+            lines.append(f"Vol: {_format_usd(volume)}   Trend: {direction}")
+        lines.append("")
+        lines.extend(_sparkline_rows(self.closes))
+        return "\n".join(lines)
+
+
 def _wss_on_message(ws, message):
     try:
         print(json.dumps(json.loads(message), indent=2), flush=True)
@@ -55,7 +263,7 @@ def _wss_on_message(ws, message):
         print(message, flush=True)
 
 
-def _wss_connect(on_open):
+def _wss_connect(on_open, on_message=None):
     _require_pro()
     try:
         import websocket
@@ -77,7 +285,7 @@ def _wss_connect(on_open):
         WSS_BASE,
         header={"X-API-KEY": get_api_key()},
         on_open=on_open,
-        on_message=_wss_on_message,
+        on_message=on_message or _wss_on_message,
         on_error=on_error,
         on_close=on_close,
     )
@@ -97,12 +305,24 @@ def cmd_watch_tx(args):
 
 
 def cmd_watch_kline(args):
+    on_message = None
+    if args.format == "markdown":
+        formatter = _KlineFormatter(history=args.history)
+
+        def on_message(ws, message):
+            event = _extract_kline_event(message)
+            if event is None:
+                _wss_on_message(ws, message)
+                return
+            print(formatter.render(event), flush=True)
+            print("---", flush=True)
+
     def on_open(ws):
         ws.send(json.dumps({
             "jsonrpc": "2.0", "method": "subscribe",
             "params": ["kline", args.address, args.interval, args.chain], "id": 1,
         }))
-    _wss_connect(on_open)
+    _wss_connect(on_open, on_message=on_message)
 
 
 def cmd_watch_price(args):
@@ -376,6 +596,9 @@ def main():
     p.add_argument("--address", required=True)
     p.add_argument("--chain", required=True)
     p.add_argument("--interval", default="k60", choices=list(VALID_WSS_INTERVALS))
+    p.add_argument("--format", default="raw", choices=["raw", "markdown"])
+    p.add_argument("--history", type=int, default=20,
+                   help="Number of closes to keep in the markdown mini-chart")
 
     p = sub.add_parser("watch-price", help="Stream live price changes for tokens (pro plan)")
     p.add_argument("--tokens", required=True, nargs="+", metavar="ADDRESS-CHAIN")
@@ -392,6 +615,24 @@ def main():
     if get_api_plan() == "pro" and not IN_SERVER:
         _require_docker()
         if args.command not in _DIRECT:
+            if args.command == "watch-kline" and args.format != "raw":
+                if _server_is_running():
+                    _exec_in_server([
+                        "watch-kline",
+                        "--address", args.address,
+                        "--chain", args.chain,
+                        "--interval", args.interval,
+                        "--format", args.format,
+                        "--history", str(args.history),
+                    ])
+                _exec_in_ephemeral_container([
+                    "watch-kline",
+                    "--address", args.address,
+                    "--chain", args.chain,
+                    "--interval", args.interval,
+                    "--format", args.format,
+                    "--history", str(args.history),
+                ])
             if not _server_is_running():
                 print(
                     "Error: server not running.\n"
@@ -404,8 +645,17 @@ def main():
                 _send_to_server(f"subscribe {args.topic} {args.address} {args.chain}")
                 return
             if args.command == "watch-kline":
-                _send_to_server(f"subscribe kline {args.address} {args.chain} {args.interval}")
-                return
+                if args.format == "raw":
+                    _send_to_server(f"subscribe kline {args.address} {args.chain} {args.interval}")
+                    return
+                _exec_in_server([
+                    "watch-kline",
+                    "--address", args.address,
+                    "--chain", args.chain,
+                    "--interval", args.interval,
+                    "--format", args.format,
+                    "--history", str(args.history),
+                ])
             if args.command == "watch-price":
                 _send_to_server("subscribe price " + " ".join(args.tokens))
                 return

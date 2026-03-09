@@ -89,10 +89,12 @@ python scripts/ave_data_wss.py watch-tx --address <pair_address> --chain <chain>
 ### Stream live kline updates
 
 ```bash
-python scripts/ave_data_wss.py watch-kline --address <pair_address> --chain <chain> [--interval k60]
+python scripts/ave_data_wss.py watch-kline --address <pair_address> --chain <chain> [--interval k60] [--format raw|markdown]
 ```
 
 `--interval` choices: `s1 k1 k5 k15 k30 k60 k120 k240 k1440 k10080`
+`--format markdown` enables the ASCII mini-chart formatter.
+Formatted mode can run directly in Docker even if the background daemon is not already running.
 
 ### Stream live price changes
 
@@ -138,6 +140,9 @@ python scripts/ave_data_wss.py start-server
 
 # 2. Stream kline updates (1-minute candles)
 python scripts/ave_data_wss.py watch-kline --address <pair_address> --chain bsc --interval k1
+
+# 2b. Stream formatted markdown output with ASCII mini-chart
+python scripts/ave_data_wss.py watch-kline --address <pair_address> --chain bsc --interval k1 --format markdown
 
 # 3. When done, stop the server
 python scripts/ave_data_wss.py stop-server
