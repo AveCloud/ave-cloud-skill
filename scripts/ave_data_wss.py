@@ -20,9 +20,11 @@ if _dir not in sys.path:
     sys.path.insert(0, _dir)
 
 from ave_data_rest import (
-    get_api_key, get_api_plan, USE_DOCKER, IN_SERVER, SERVER_CONTAINER,
+    api_get, get_api_key, get_api_plan, USE_DOCKER, IN_SERVER, SERVER_CONTAINER,
     SERVER_FIFO, WSS_BASE, VALID_WSS_INTERVALS, _ensure_docker_image, _server_is_running,
 )
+
+_PAIR_LABEL_CACHE = {}
 
 
 def _require_pro():
@@ -92,6 +94,52 @@ def _interval_label(interval):
             return f"{minutes // 60}h"
         return f"{minutes}m"
     return interval
+
+
+def _short_label(value):
+    if not isinstance(value, str):
+        return str(value)
+    if len(value) <= 18:
+        return value
+    return f"{value[:8]}...{value[-6:]}"
+
+
+def _resolve_pair_label(pair, chain):
+    cache_key = (pair, chain)
+    if cache_key in _PAIR_LABEL_CACHE:
+        return _PAIR_LABEL_CACHE[cache_key]
+
+    label = _short_label(pair)
+    try:
+        resp = api_get(f"/txs/{pair}-{chain}")
+        if resp.status_code < 400:
+            body = resp.json()
+            data = body.get("data")
+            txs = data if isinstance(data, list) else data.get("txs") if isinstance(data, dict) else None
+            if isinstance(txs, list):
+                for tx in txs:
+                    if not isinstance(tx, dict):
+                        continue
+                    left = (
+                        tx.get("from_token_symbol")
+                        or tx.get("from_symbol")
+                        or tx.get("token0_symbol")
+                        or tx.get("base_symbol")
+                    )
+                    right = (
+                        tx.get("to_token_symbol")
+                        or tx.get("to_symbol")
+                        or tx.get("token1_symbol")
+                        or tx.get("quote_symbol")
+                    )
+                    if left and right:
+                        label = f"{left}/{right}"
+                        break
+    except Exception:
+        pass
+
+    _PAIR_LABEL_CACHE[cache_key] = label
+    return label
 
 
 def _format_small_number(value):
@@ -219,6 +267,7 @@ class _KlineFormatter:
         volume = event.get("volume")
         pair = event.get("pair", "pair")
         chain = event.get("chain", "?")
+        pair_label = event.get("pair_label") or _resolve_pair_label(pair, chain)
         interval = _interval_label(event.get("interval", "?"))
 
         pct = None
@@ -238,7 +287,7 @@ class _KlineFormatter:
                 direction = "down candle"
 
         lines = [
-            f"[{chain}] {pair} {interval}",
+            f"[{chain}] {pair_label} {interval}",
             (
                 f"O: {_format_small_number(open_value)}  "
                 f"H: {_format_small_number(high)}  "
