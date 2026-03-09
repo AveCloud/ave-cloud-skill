@@ -215,6 +215,8 @@ Subscribes to real-time proxy wallet order push notifications.
 python scripts/ave_trade_wss.py watch-orders
 ```
 
+If `AVE_USE_DOCKER=true`, the CLI re-execs into Docker like the other AVE scripts. No separate manual Docker invocation is required.
+
 Connects to `wss://bot-api.ave.ai/thirdws?ave_access_key={AVE_API_KEY}`, subscribes to topic `botswap`.
 Each push message includes: `id`, `status`, `chain`, `assetsId`, `orderType`, `swapType`, `txHash`, `errorMessage`.
 

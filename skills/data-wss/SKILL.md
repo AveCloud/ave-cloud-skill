@@ -178,6 +178,7 @@ Guidelines:
 - Summarize the latest candle and short-term direction above the chart
 - Keep the ASCII chart narrow enough to render cleanly in Markdown
 - If a richer chart or image is available in the client, prefer that over ASCII
+- Prefer resolved token symbols in the header when pair metadata is available; otherwise abbreviate the pair address cleanly
 
 ## Error Translation
 
