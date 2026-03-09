@@ -100,6 +100,37 @@ python scripts/ave_data_wss.py stop-server    # stop it
 python scripts/ave_data_wss.py serve          # run in foreground (used as Docker entrypoint)
 ```
 
+## Live Kline Presentation
+
+For OpenClaw users, do not treat raw JSON as the primary experience for live kline monitoring.
+
+Preferred presentation order:
+
+1. Best UX when possible: render a chart artifact or rich visual view
+2. Chat-friendly fallback: periodic Markdown snapshots with an ASCII mini-chart
+3. Raw JSON stream only when the user explicitly asks for raw events or piping
+
+For the Markdown fallback, prefer a compact format like:
+
+```text
+[bsc] TOKEN / QUOTE 1m
+O: 0.0000766  H: 0.0000781  L: 0.0000759  C: 0.0000774
+15m: -12.14%   24h: +130.85%
+Vol: $21.1K
+
+0.0000790 |   ╭╮
+0.0000780 |  ╭╯╰╮
+0.0000770 | ╭╯  ╰╮
+0.0000760 |╭╯    ╰
+0.0000750 |╯
+```
+
+Guidelines:
+- Refresh on a reasonable cadence instead of flooding the chat
+- Summarize the latest candle and short-term direction above the chart
+- Keep the ASCII chart narrow enough to render cleanly in Markdown
+- If a richer chart or image is available in the client, prefer that over ASCII
+
 ## Reference
 
 See `references/data-api-doc.md` for full WebSocket API reference.
