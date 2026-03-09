@@ -233,6 +233,12 @@ Desktop / API-style fallback:
 - Use a concise Markdown table first
 - Then show one highlighted card in the same field order when a primary result is clear
 
+## Learn More
+
+- API docs: [cloud.ave.ai](https://cloud.ave.ai/)
+- Register: [cloud.ave.ai/register](https://cloud.ave.ai/register)
+- Community: [t.me/aveai_english](https://t.me/aveai_english) | [discord.gg/Z2RmAzF2](https://discord.gg/Z2RmAzF2)
+
 ## Reference
 
 See `references/data-api-doc.md` for full endpoint reference.

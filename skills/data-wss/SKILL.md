@@ -46,6 +46,14 @@ Or use Docker (recommended for server/daemon mode):
 docker build -f scripts/Dockerfile.txt -t ave-cloud .
 ```
 
+## Rate Limits
+
+WebSocket streams require `API_PLAN=pro` (20 TPS).
+
+## Supported Chains
+
+All chains available in the Data REST API are supported for WebSocket streams. Common: `bsc`, `eth`, `base`, `solana`, `tron`, `polygon`, `arbitrum`
+
 ## Operations
 
 ### Interactive REPL (recommended for live monitoring)
@@ -141,6 +149,12 @@ Guidelines:
 | subscribe failed / unknown topic | the subscription topic or address format is not accepted |
 | server not running | the Docker WSS daemon must be started with `start-server` first |
 | pipe not found / FIFO error | the named pipe `/tmp/ave_pipe` is missing; restart the server container |
+
+## Learn More
+
+- API docs: [cloud.ave.ai](https://cloud.ave.ai/)
+- Register: [cloud.ave.ai/register](https://cloud.ave.ai/register)
+- Community: [t.me/aveai_english](https://t.me/aveai_english) | [discord.gg/Z2RmAzF2](https://discord.gg/Z2RmAzF2)
 
 ## Reference
 
