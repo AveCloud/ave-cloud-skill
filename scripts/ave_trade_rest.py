@@ -209,7 +209,7 @@ def _builtin_rate_limit():
 
 def _trade_sign(method: str, path: str, body=None):
     secret = _get_secret_key()
-    timestamp = datetime.datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z")
+    timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
     message = timestamp + method.upper().strip() + path.strip()
     if body:
         if isinstance(body, dict):

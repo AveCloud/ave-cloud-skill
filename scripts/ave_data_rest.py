@@ -322,7 +322,8 @@ def cmd_token(args):
 
 
 def cmd_price(args):
-    payload = {"token_ids": [token.lower() for token in args.tokens]}
+    evm_chains = ("-bsc", "-eth", "-base")
+    payload = {"token_ids": [token.lower() if token.endswith(evm_chains) else token for token in args.tokens]}
     if args.tvl_min:
         payload["tvl_min"] = int(args.tvl_min) if args.tvl_min.is_integer() else args.tvl_min
     if args.volume_min:

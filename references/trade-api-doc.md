@@ -248,7 +248,7 @@ Observed PROD behavior on 2026-03-09:
 |-----------|------|----------|-------------|
 | `chain` | string | Yes | `bsc` / `eth` / `base` |
 | `requestTxId` | string | Yes | `requestTxId` returned from `createEvmTx` |
-| `signedTx` | string | Yes | Signed transaction (base64-encoded) |
+| `signedTx` | string | Yes | Signed transaction (hex-encoded) |
 | `useMev` | boolean | No | Enable MEV protection |
 
 ##### Request Example
