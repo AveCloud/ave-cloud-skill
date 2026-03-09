@@ -103,6 +103,28 @@ Use these unless the user explicitly asks for a different test size:
 
 Always surface the cap before the real test starts.
 
+## Chain And Token Conventions
+
+Use these conventions consistently across AVE responses and command construction:
+
+| Topic | Convention |
+|---|---|
+| EVM native token placeholder | `0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee` |
+| Solana native token input | `sol` |
+| Token search identifiers | prefer `contract-chain` for batch price and live price subscriptions |
+| EVM addresses in user output | preserve the chain's normal display style; lowercase only when the API requires normalization |
+| Solana identifiers | use mint addresses or wallet addresses exactly as provided; do not lowercase |
+
+Common test fixtures that are already proven in this repo:
+
+| Chain | Token | Address / Symbol |
+|---|---|---|
+| BSC | USDT | `0x55d398326f99059fF775485246999027B3197955` |
+| BSC | BTCB | `0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c` |
+| BSC | WBNB | `0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c` |
+| Solana | SOL | `sol` |
+| Solana | USDC | `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` |
+
 ## Error Translation
 
 Translate low-level API failures into direct operator guidance:
