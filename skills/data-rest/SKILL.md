@@ -144,6 +144,17 @@ python scripts/ave_data_rest.py main-tokens --chain <chain>
 - **Risk report**: lead with risk level (LOW/MEDIUM/HIGH/CRITICAL), then key findings
 - **Search**: table with symbol, name, chain, address, price, 24h change
 
+## Error Translation
+
+When the API response is vague, translate it into operator terms:
+
+| Raw issue pattern | User-facing explanation |
+|---|---|
+| invalid token_ids | the token identifier format or filter combination is not accepted |
+| token not found | AVE has no matching token record for that chain/address right now |
+| empty holder list on a known token | endpoint returned no holder data; treat as data unavailability, not proof of zero holders |
+| unsupported chain | the chain id is not supported by this endpoint |
+
 ## Token Search Presentation
 
 For token search, do not dump raw JSON. Prefer an AVE Telegram-style token card for chat surfaces.

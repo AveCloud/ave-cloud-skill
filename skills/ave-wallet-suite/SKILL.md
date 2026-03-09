@@ -34,6 +34,18 @@ Choose the sub-skill by user intent:
 
 If the request mixes data and trading, do the data preflight first, then switch to the trade skill.
 
+## Decision Matrix
+
+Use this quick router when the user request is broad or ambiguous:
+
+| User says | Use | Ask first |
+|---|---|---|
+| "find this token", "check this CA", "is this safe" | `ave-data-rest` | chain or contract if ambiguous |
+| "watch this pair", "live price", "live kline" | `ave-data-wss` | pair/token and whether they want stream or snapshots |
+| "swap with my wallet", "sign locally", "use mnemonic" | `ave-trade-chain-wallet` | chain, pair, spend cap, test vs real |
+| "use proxy wallet", "place bot order", "watch my order" | `ave-trade-proxy-wallet` | assetsId, chain, spend cap, test vs real |
+| "I don't have an API key yet" | this skill first | whether they only need setup or also want the first action |
+
 ## First-Turn Checklist
 
 Before acting, resolve these questions from context or by a short clarification:
@@ -77,6 +89,45 @@ Always include these when present:
 - Prefer immediate confirmation polling over assuming success from submission
 - If a route requires approval, say so before retrying the sell path
 - If a stream exists for the chosen flow, use it as a supplement, not as the only source of truth
+
+## Safe Test Defaults
+
+Use these unless the user explicitly asks for a different test size:
+
+| Chain | Default test input | Cap guidance |
+|---|---|---|
+| BSC chain-wallet | `0.0005 BNB` | keep gas under `0.0003 BNB`; abort if route or gas spikes |
+| Solana chain-wallet | `0.0005 SOL` | keep total fee budget under `0.0005 SOL`; abort if higher |
+| BSC proxy-wallet | `0.0005 BNB` | verify funded wallet and sell back promptly |
+| Solana proxy-wallet | start at `0.002 SOL` if smaller sizes fail | prefer smallest accepted route size |
+
+Always surface the cap before the real test starts.
+
+## Error Translation
+
+Translate low-level API failures into direct operator guidance:
+
+| Raw issue pattern | Tell the user |
+|---|---|
+| missing API key / auth failed | credentials are missing or invalid |
+| unsupported parameter / invalid parameter | the chosen parameter combination is not accepted by PROD |
+| insufficient balance | the wallet does not have enough spend token or gas token |
+| approval required / allowance too low | approval is needed before the sell or token spend can proceed |
+| route too small / min notional failure | the trade size is below the route minimum; increase size slightly |
+| RPC required | a user RPC node is required for local EVM signing |
+| server not running | the Docker WSS daemon must be started before using server mode |
+
+Prefer the translated explanation in the response, with the raw error kept as supporting detail only when useful.
+
+## Reusable Response Templates
+
+Use these compact shapes consistently:
+
+- Token search: one primary token card, then compact alternates if needed
+- Risk check: `risk level -> key flags -> tax/owner/honeypot notes -> next action`
+- Quote: `pair -> input -> estimated output -> route notes -> next action`
+- Create tx: `what was created -> input/fee/slippage -> requestTxId -> sign/send next`
+- Submission: `submitted/confirmed -> spend + fees -> tx hash/order ID -> monitor or sell-back next`
 
 ## Learn More
 

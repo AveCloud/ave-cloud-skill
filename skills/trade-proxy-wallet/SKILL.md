@@ -74,6 +74,17 @@ For a new proxy-wallet trading request:
 3. Use the smallest practical real order size, and respect chain-specific minimums
 4. Open `watch-orders` when live status feedback is useful, but still confirm by querying order IDs directly
 
+## Safe Test Defaults
+
+Use these defaults for first real tests unless the user provides stricter limits:
+
+- BSC proxy buy test: `0.0005 BNB`
+- Solana proxy buy test: start at `0.002 SOL` if smaller sizes are rejected by the route
+- Use a disposable wallet for testing when possible
+- After a test buy confirms, prefer an immediate sell-back instead of leaving exposure open
+
+If the wallet is unfunded, stop and ask for funding before submitting the order.
+
 ## Wallet Management
 
 ```bash
@@ -201,6 +212,8 @@ Each push message includes: `id`, `status`, `chain`, `assetsId`, `orderType`, `s
 
 Press Ctrl+C to stop.
 
+Offer `watch-orders` automatically after a real proxy order submission unless the user asked for a quiet, terse response.
+
 ## Response Contract
 
 After every proxy-wallet action, answer in this order:
@@ -211,6 +224,32 @@ After every proxy-wallet action, answer in this order:
 4. Next step: poll order, watch `botswap`, place the sell-back, or clean up the wallet
 
 Treat WebSocket events as confirmation aids, not as the only evidence of final status.
+
+## Error Translation
+
+Map common proxy-wallet failures into direct operator guidance:
+
+| Raw issue pattern | User-facing explanation |
+|---|---|
+| user account not exist or deactivated | the proxy wallet account is missing or inactive |
+| transaction not found / approve not found | the requested order or approval id does not exist |
+| invalid parameter | the chosen order parameters are not accepted by PROD |
+| insufficient balance | the proxy wallet needs more spend token or native gas token |
+| route too small / min notional failure | the order size is below the route minimum; increase size slightly |
+| success with empty cancel response | the cancel request was accepted, but there may be no active order data to return |
+
+Prefer the translated explanation first, and keep the raw API message only as supporting detail.
+
+## Response Templates
+
+- Wallet create:
+  `Proxy wallet created: <assetsId> on <supported chains>. Next: fund the wallet or place a test order.`
+- Market order:
+  `Order submitted: <chain> <buy/sell> via proxy wallet <assetsId>. Spend: <amount/token>. IDs: <order id>. Next: watch orders or poll status.`
+- Limit order:
+  `Limit order placed: trigger price <value>. IDs: <order id>. Next: monitor or cancel if conditions change.`
+- Order confirmation:
+  `Order confirmed: <order id>, tx hash <hash>. Spend/result: <summary>. Next: sell back, monitor, or clean up the wallet.`
 
 ## Reference
 

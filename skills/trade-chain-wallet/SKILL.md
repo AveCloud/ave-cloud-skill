@@ -38,8 +38,9 @@ Available on all plan tiers (free, normal, pro).
 **Trading fee:** 0.6% | **Rebate to `feeRecipient`:** 20%
 
 Observed PROD caveats on 2026-03-09:
-- EVM `--fee-recipient` and `--fee-recipient-rate` were both rejected by reproducible PROD probes, with the `feeRecipient` case returning a misleading `feeRecipientRate` error.
+- EVM `--fee-recipient` should be paired with `--fee-recipient-rate`; unpaired `feeRecipient` produced misleading `feeRecipientRate` errors in PROD probes.
 - Solana `--fee-recipient` should be paired with `--fee-recipient-rate`; unpaired `feeRecipient` returned a `feeRecipientRate` error in PROD.
+- Create responses may apply a different `slippage` value than the requested one; report the applied value instead of assuming an echo.
 
 ## Setup
 
@@ -81,6 +82,17 @@ For a new chain-wallet trading request:
 4. For EVM `swap-evm`, require a user RPC node via `--rpc-url` or `AVE_<CHAIN>_RPC_URL`
 
 Prefer the low-level `create-*` and `send-*` flow when you need tighter control over gas, fees, or request IDs.
+
+## Safe Test Defaults
+
+Use these defaults for first real tests unless the user gives stricter limits:
+
+- BSC buy test: `0.0005 BNB`
+- BSC gas cap: `0.0003 BNB`
+- Solana buy test: `0.0005 SOL`
+- Solana total priority-fee cap: `0.0005 SOL`
+
+Abort or fall back to create-only preview if the route exceeds those caps.
 
 ## Operations
 
@@ -192,6 +204,30 @@ After every chain-wallet action, answer in this order:
 4. Next step: sign, send, confirm, approve, or sell back
 
 If a sell path requires approval, say that explicitly before retrying.
+
+## Error Translation
+
+Map common failures into clear next actions:
+
+| Raw issue pattern | User-facing explanation |
+|---|---|
+| `Invalid parameter: feeRecipientRate` with only `feeRecipient` set | pair `feeRecipient` with `feeRecipientRate`, or remove both |
+| missing signing envs | set `AVE_MNEMONIC` or the per-chain private key env |
+| RPC required for `swap-evm` | provide `--rpc-url` or set the chain-specific RPC env |
+| insufficient token balance / insufficient gas | fund the wallet with the spend token or native gas token |
+| approval required | approve the token first, then retry the sell |
+| HTTP 200 with JSON error status | treat it as a failed API call, not a success |
+
+Prefer the translated explanation first, then include the raw API message if it helps debugging.
+
+## Response Templates
+
+- Quote:
+  `Quote ready: <input token/amount> -> <estimated output>. Notes: <route/slippage>. Next: create tx or adjust size.`
+- Create tx:
+  `Transaction created: <chain> <swap type>. Spend: <input>, applied slippage: <value>, requestTxId: <id>. Next: sign locally and send.`
+- Send / confirm:
+  `Transaction submitted: <tx hash>. Spend: <input>, fee/gas: <value>. Next: confirm receipt or prepare sell-back.`
 
 ## Signing Details
 
