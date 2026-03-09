@@ -150,10 +150,14 @@ When the API response is vague, translate it into operator terms:
 
 | Raw issue pattern | User-facing explanation |
 |---|---|
+| missing API key / auth failed | credentials are missing or invalid; check `AVE_API_KEY` |
+| HTTP 429 / rate limit exceeded | too many requests; wait and retry after the rate limit window resets |
 | invalid token_ids | the token identifier format or filter combination is not accepted |
 | token not found | AVE has no matching token record for that chain/address right now |
 | empty holder list on a known token | endpoint returned no holder data; treat as data unavailability, not proof of zero holders |
 | unsupported chain | the chain id is not supported by this endpoint |
+| kline returns more points than requested | the API ignored `limit`; client-side trimming is applied automatically |
+| empty risk report on a valid token | the risk endpoint has no data for this token; do not treat as "safe" |
 
 ## Token Search Presentation
 

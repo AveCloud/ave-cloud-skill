@@ -220,12 +220,17 @@ Map common failures into clear next actions:
 
 | Raw issue pattern | User-facing explanation |
 |---|---|
+| missing API key / auth failed | credentials are missing or invalid; check `AVE_API_KEY` |
 | `Invalid parameter: feeRecipientRate` with only `feeRecipient` set | pair `feeRecipient` with `feeRecipientRate`, or remove both |
 | missing signing envs | set `AVE_MNEMONIC` or the per-chain private key env |
 | RPC required for `swap-evm` | provide `--rpc-url` or set the chain-specific RPC env |
+| RPC connection refused / timeout | the RPC endpoint is unreachable; try a different RPC URL |
 | insufficient token balance / insufficient gas | fund the wallet with the spend token or native gas token |
 | approval required | approve the token first, then retry the sell |
+| transaction reverted / execution failed | the on-chain tx failed; check slippage, gas, or token tax |
+| route too small / min notional failure | the trade size is below the route minimum; increase size slightly |
 | HTTP 200 with JSON error status | treat it as a failed API call, not a success |
+| `gasLimit` returned as 0 | the CLI auto-estimates gas with 1.3x buffer; if it still fails, increase gas manually |
 
 Prefer the translated explanation first, then include the raw API message if it helps debugging.
 
