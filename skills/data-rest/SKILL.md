@@ -144,6 +144,48 @@ python scripts/ave_data_rest.py main-tokens --chain <chain>
 - **Risk report**: lead with risk level (LOW/MEDIUM/HIGH/CRITICAL), then key findings
 - **Search**: table with symbol, name, chain, address, price, 24h change
 
+## Token Search Presentation
+
+For token search, do not dump raw JSON. Prefer an AVE Telegram-style token card for chat surfaces.
+
+Use this layout when enough fields are available:
+
+```text
+📌 【chain】 SYMBOL (ProjectName)
+📄 合约: 0x...
+
+⚖️ Dex: ...
+💲 价格: $...
+💰 市值: $...
+💧 流动性: $...
+🪙 交易对: ...
+📈 15m: ..., 24h: ...
+🎯 狙击人: ...  抢购人: ...
+🕠 开盘时间: ...
+
+👥 持有人: ...(top holder summary)
+👨‍🍳创建者 ... 钱包地址
+🔍 检测: 分数: ...(风险等级)
+买入税: ...  卖出税: ...
+⚠️...
+
+🔥 首次喊单 ... ... (...分)
+```
+
+Presentation rules:
+- Prefer the exact field order above for Chinese / Telegram-style responses
+- Omit lines that are not available instead of inventing data
+- Keep labels in Chinese when the user is operating in Chinese or the output is clearly intended for Telegram community style
+- If the user is operating in English, keep the same card structure but translate labels
+- Shorten long addresses only when space is constrained; otherwise show the full contract on the main contract line
+- Use `0.0{n}1234` style formatting for very small prices when that improves readability
+- If multiple chains or duplicate symbols exist, say that first, then show the top 3 to 5 candidate cards
+- If there is one obvious best match, show one full card and list the other candidates more compactly below it
+
+Desktop / API-style fallback:
+- Use a concise Markdown table first
+- Then show one highlighted card in the same field order when a primary result is clear
+
 ## Reference
 
 See `references/data-api-doc.md` for full endpoint reference.
