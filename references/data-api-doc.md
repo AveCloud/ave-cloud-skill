@@ -50,6 +50,10 @@ Body: { "token_ids": ["address-chain", ...], "tvl_min": 0, "tx_24h_volume_min": 
 ```
 Max 200 tokens per request.
 
+Observed PROD behavior on 2026-03-09:
+- Plain `token_ids` requests succeed.
+- Filtered requests work when `token_ids` are lowercased and `tvl_min` / `tx_24h_volume_min` are sent as JSON numbers.
+
 ### Rank Topics
 ```
 GET /v2/ranks/topics
@@ -85,11 +89,19 @@ Default: interval=60, size=600, max size=1000
 
 Kline category param (optional): `u` = USDT price, `r` = relative, `m` = main token price
 
+Observed PROD behavior on 2026-03-09:
+- The API may ignore the requested `size` and return a much larger `points` set.
+- The CLI trims the returned `points` array locally to the requested `--size`.
+
 ### Top 100 Holders
 ```
 GET /v2/tokens/top100/{token_address}-{chain}
 ```
 Returns: holder address, balance, percentage, buy/sell history per holder.
+
+Observed PROD behavior on 2026-03-09:
+- Some very large blue-chip/stable tokens returned an empty list even though the endpoint succeeded.
+- Use a token with known populated holder data, such as BSC WBNB, for smoke testing.
 
 ### Swap Transactions
 ```
@@ -119,6 +131,10 @@ GET /v2/contracts/{token_address}-{chain}
 ```
 Returns: risk_level (LOW/MEDIUM/HIGH/CRITICAL), risk_score, honeypot flag, buy_tax, sell_tax,
 owner address, ownership renounced, mint/burn functions, top holder concentration, DEX liquidity.
+
+Observed PROD behavior on 2026-03-09:
+- Some blue-chip stablecoins returned `SUCCESS: token not found`.
+- Use BSC WBNB or another token with known coverage for smoke tests.
 
 ## Common Chain Identifiers
 

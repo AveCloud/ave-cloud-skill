@@ -31,11 +31,6 @@ EVM_CHAINS = ("bsc", "eth", "base")
 ALL_CHAINS = ("bsc", "eth", "base", "solana")
 NATIVE_COIN = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
 CHAIN_ID = {"bsc": 56, "eth": 1, "base": 8453}
-DEFAULT_RPC = {
-    "bsc": "https://bsc.publicnode.com",
-    "eth": "https://ethereum.publicnode.com",
-    "base": "https://base.publicnode.com",
-}
 RPC_ENV = {
     "bsc": "AVE_BSC_RPC_URL",
     "eth": "AVE_ETH_RPC_URL",
@@ -214,7 +209,7 @@ def _builtin_rate_limit():
 
 def _trade_sign(method: str, path: str, body=None):
     secret = _get_secret_key()
-    timestamp = datetime.datetime.utcnow().isoformat() + "Z"
+    timestamp = datetime.datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z")
     message = timestamp + method.upper().strip() + path.strip()
     if body:
         if isinstance(body, dict):
@@ -296,7 +291,17 @@ def trade_post(path, payload, proxy=False):
 def handle_response(resp):
     if resp.status_code >= 400:
         raise RuntimeError(f"API error {resp.status_code}: {resp.text}")
-    print(json.dumps(resp.json(), indent=2))
+    body = resp.json()
+    if isinstance(body, dict):
+        data = body.get("data")
+        if isinstance(data, dict) and "txContext" in data and "txContent" not in data:
+            # PROD currently returns `txContext` for Solana create tx responses.
+            data["txContent"] = data["txContext"]
+        status = body.get("status")
+        if status is not None and status not in (0, 1, 200):
+            msg = body.get("msg", "")
+            raise RuntimeError(f"API status {status}: {msg}".strip())
+    print(json.dumps(body, indent=2))
 
 
 def _rpc_call(rpc_url, method, params):
@@ -306,7 +311,10 @@ def _rpc_call(rpc_url, method, params):
         rpc_url, data=data, headers={"Content-Type": "application/json"}, method="POST"
     )
     with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read().decode())["result"]
+        body = json.loads(resp.read().decode())
+        if "error" in body:
+            raise RuntimeError(f"RPC error: {body['error']}")
+        return body["result"]
 
 
 def _mnemonic_to_seed(mnemonic: str) -> bytes:
@@ -375,7 +383,17 @@ def _sign_evm_tx(tx_dict: dict, private_key) -> str:
     except ImportError:
         raise ImportError("eth-account is required. Run: pip install eth-account>=0.10.0")
     signed = Account.sign_transaction(tx_dict, private_key)
-    return signed.raw_transaction.hex()
+    return "0x" + signed.raw_transaction.hex()
+
+
+def _get_required_evm_rpc_url(chain: str, cli_rpc_url) -> str:
+    rpc_url = cli_rpc_url or os.environ.get(RPC_ENV[chain])
+    if rpc_url:
+        return rpc_url
+    raise EnvironmentError(
+        f"swap-evm requires a user-provided RPC node for {chain}. "
+        f"Pass --rpc-url or set {RPC_ENV[chain]}."
+    )
 
 
 def _sign_solana_tx(tx_content_b64: str, keypair) -> str:
@@ -385,7 +403,7 @@ def _sign_solana_tx(tx_content_b64: str, keypair) -> str:
     except ImportError:
         raise ImportError("solders is required. Run: pip install solders>=0.20.0")
     tx_bytes = base64.b64decode(tx_content_b64)
-    # txContext includes a 0x80 version prefix byte before the MessageV0 body
+    # txContent includes a 0x80 version prefix byte before the MessageV0 body
     msg = MessageV0.from_bytes(tx_bytes[1:])
     signed = VersionedTransaction(msg, [keypair])
     return base64.b64encode(bytes(signed)).decode()
@@ -416,6 +434,8 @@ def cmd_create_evm_tx(args):
     }
     if args.fee_recipient:
         payload["feeRecipient"] = args.fee_recipient
+    if args.fee_recipient_rate:
+        payload["feeRecipientRate"] = args.fee_recipient_rate
     if args.auto_slippage:
         payload["autoSlippage"] = True
     handle_response(trade_post("/v1/thirdParty/chainWallet/createEvmTx", payload))
@@ -446,6 +466,8 @@ def cmd_create_solana_tx(args):
         payload["useMev"] = True
     if args.fee_recipient:
         payload["feeRecipient"] = args.fee_recipient
+    if args.fee_recipient_rate:
+        payload["feeRecipientRate"] = args.fee_recipient_rate
     if args.auto_slippage:
         payload["autoSlippage"] = True
     handle_response(trade_post("/v1/thirdParty/chainWallet/createSolanaTx", payload))
@@ -464,6 +486,7 @@ def cmd_send_solana_tx(args):
 def cmd_swap_evm(args):
     account = _get_evm_account()
     creator_address = account.address
+    rpc_url = _get_required_evm_rpc_url(args.chain, args.rpc_url)
 
     create_payload = {
         "chain": args.chain,
@@ -476,36 +499,39 @@ def cmd_swap_evm(args):
     }
     if args.fee_recipient:
         create_payload["feeRecipient"] = args.fee_recipient
+    if args.fee_recipient_rate:
+        create_payload["feeRecipientRate"] = args.fee_recipient_rate
     if args.auto_slippage:
         create_payload["autoSlippage"] = True
 
-    quote_payload = {
-        "chain": args.chain,
-        "inAmount": args.in_amount,
-        "inTokenAddress": args.in_token,
-        "outTokenAddress": args.out_token,
-        "swapType": args.swap_type,
-    }
-    quote_resp = trade_post("/v1/thirdParty/chainWallet/getAmountOut", quote_payload)
-    if quote_resp.status_code >= 400:
-        raise RuntimeError(f"quote failed {quote_resp.status_code}: {quote_resp.text}")
-    spender = quote_resp.json()["data"]["spender"]
-
     resp = trade_post("/v1/thirdParty/chainWallet/createEvmTx", create_payload)
-    if resp.status_code >= 400:
-        raise RuntimeError(f"create-evm-tx failed {resp.status_code}: {resp.text}")
-    create_data = resp.json()["data"]
+    resp_json = resp.json()
+    if resp.status_code >= 400 or resp_json.get("status") != 200:
+        raise RuntimeError(f"create-evm-tx failed: {resp.text}")
+    create_data = resp_json["data"]
 
-    rpc_url = args.rpc_url or os.environ.get(RPC_ENV[args.chain]) or DEFAULT_RPC[args.chain]
+    tx_content = create_data["txContent"]
+    tx_data = tx_content["data"]
+    if not tx_data.startswith("0x"):
+        tx_data = "0x" + tx_data
     nonce = int(_rpc_call(rpc_url, "eth_getTransactionCount", [creator_address, "latest"]), 16)
     gas_price = int(_rpc_call(rpc_url, "eth_gasPrice", []), 16)
 
-    is_native_in = args.in_token.lower() == NATIVE_COIN.lower()
+    gas_limit = int(create_data["gasLimit"])
+    if gas_limit == 0:
+        est = _rpc_call(rpc_url, "eth_estimateGas", [{
+            "from": creator_address,
+            "to": tx_content["to"],
+            "data": tx_data,
+            "value": hex(int(tx_content.get("value", "0"))),
+        }])
+        gas_limit = int(int(est, 16) * 1.3)
+
     tx_dict = {
-        "to": spender,
-        "data": create_data["txContext"],
-        "gas": int(create_data["gasLimit"]),
-        "value": int(create_data["inAmount"]) if is_native_in else 0,
+        "to": tx_content["to"],
+        "data": tx_data,
+        "gas": gas_limit,
+        "value": int(tx_content.get("value", "0")),
         "nonce": nonce,
         "gasPrice": gas_price,
         "chainId": CHAIN_ID[args.chain],
@@ -539,15 +565,20 @@ def cmd_swap_solana(args):
         create_payload["useMev"] = True
     if args.fee_recipient:
         create_payload["feeRecipient"] = args.fee_recipient
+    if args.fee_recipient_rate:
+        create_payload["feeRecipientRate"] = args.fee_recipient_rate
     if args.auto_slippage:
         create_payload["autoSlippage"] = True
 
     resp = trade_post("/v1/thirdParty/chainWallet/createSolanaTx", create_payload)
-    if resp.status_code >= 400:
-        raise RuntimeError(f"create-solana-tx failed {resp.status_code}: {resp.text}")
-    create_data = resp.json()["data"]
-
-    signed_tx = _sign_solana_tx(create_data["txContext"], keypair)
+    resp_json = resp.json()
+    if resp.status_code >= 400 or resp_json.get("status") != 200:
+        raise RuntimeError(f"create-solana-tx failed: {resp.text}")
+    create_data = resp_json["data"]
+    tx_content = create_data.get("txContent") or create_data.get("txContext")
+    if not tx_content:
+        raise RuntimeError(f"create-solana-tx missing txContent/txContext: {resp.text}")
+    signed_tx = _sign_solana_tx(tx_content, keypair)
 
     send_payload = {"requestTxId": create_data["requestTxId"], "signedTx": signed_tx}
     if args.use_mev:
@@ -710,6 +741,7 @@ def main():
     p.add_argument("--swap-type", required=True, choices=["buy", "sell"])
     p.add_argument("--slippage", required=True)
     p.add_argument("--fee-recipient", default=None)
+    p.add_argument("--fee-recipient-rate", default=None, help="Rebate fee ratio in bps, max 10%% (e.g., 100 = 1%%)")
     p.add_argument("--auto-slippage", action="store_true")
 
     p = sub.add_parser("send-evm-tx", help="Submit signed EVM transaction")
@@ -728,6 +760,7 @@ def main():
     p.add_argument("--fee", required=True)
     p.add_argument("--use-mev", action="store_true")
     p.add_argument("--fee-recipient", default=None)
+    p.add_argument("--fee-recipient-rate", default=None, help="Rebate fee ratio in bps, max 10%% (e.g., 100 = 1%%)")
     p.add_argument("--auto-slippage", action="store_true")
 
     p = sub.add_parser("send-solana-tx", help="Submit signed Solana transaction")
@@ -743,9 +776,10 @@ def main():
     p.add_argument("--swap-type", required=True, choices=["buy", "sell"])
     p.add_argument("--slippage", required=True)
     p.add_argument("--fee-recipient", default=None)
+    p.add_argument("--fee-recipient-rate", default=None, help="Rebate fee ratio in bps, max 10%% (e.g., 100 = 1%%)")
     p.add_argument("--auto-slippage", action="store_true")
     p.add_argument("--use-mev", action="store_true")
-    p.add_argument("--rpc-url", default=None, help="EVM JSON-RPC URL (overrides AVE_BSC_RPC_URL/AVE_ETH_RPC_URL/AVE_BASE_RPC_URL env and publicnode.com default)")
+    p.add_argument("--rpc-url", default=None, help="Required EVM JSON-RPC URL for local signing metadata (overrides AVE_BSC_RPC_URL/AVE_ETH_RPC_URL/AVE_BASE_RPC_URL env)")
 
     p = sub.add_parser("swap-solana", help="One-step Solana swap: create + sign + send (requires key/mnemonic)")
     p.add_argument("--in-amount", required=True)
@@ -755,6 +789,7 @@ def main():
     p.add_argument("--slippage", required=True)
     p.add_argument("--fee", required=True)
     p.add_argument("--fee-recipient", default=None)
+    p.add_argument("--fee-recipient-rate", default=None, help="Rebate fee ratio in bps, max 10%% (e.g., 100 = 1%%)")
     p.add_argument("--auto-slippage", action="store_true")
     p.add_argument("--use-mev", action="store_true")
 

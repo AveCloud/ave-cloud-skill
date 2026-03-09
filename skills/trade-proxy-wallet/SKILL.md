@@ -1,6 +1,6 @@
 ---
 name: ave-trade-proxy-wallet
-version: 1.0.0
+version: 2.0.0
 description: |
   Execute server-managed (proxy wallet) DEX trades via the AVE Cloud Bot Trade API (https://bot-api.ave.ai).
   Use this skill whenever the user wants to:
