@@ -243,6 +243,23 @@ Prefer the translated explanation first, then include the raw API message if it 
 - Send / confirm:
   `Transaction submitted: <tx hash>. Spend: <input>, fee/gas: <value>. Next: confirm receipt or prepare sell-back.`
 
+## Trading Parameter Reference
+
+| Parameter | Type | Description |
+|---|---|---|
+| `--slippage` | integer (bps) | Max slippage tolerance. `500` = 5%, `1000` = 10%. Required on all create/swap commands |
+| `--auto-slippage` | flag | Let the API auto-adjust slippage based on token volatility. Overrides `--slippage` value |
+| `--use-mev` | flag | Enable MEV protection (front-running bundling). Recommended for large trades |
+| `--fee` | integer (lamports) | Solana priority fee. `50000000` = 0.05 SOL. Required on Solana create/swap commands |
+| `--fee-recipient` | address | Wallet address to receive trading fee rebate. Must be paired with `--fee-recipient-rate` |
+| `--fee-recipient-rate` | integer (bps) | Rebate ratio, max 1000 (10%). E.g. `100` = 1% rebate. Must be paired with `--fee-recipient` |
+| `--rpc-url` | URL | EVM JSON-RPC endpoint for local signing (nonce, gas estimate). Required for `swap-evm` |
+
+**Units:**
+- EVM amounts: wei (1 BNB = 10^18 wei, 1 USDT on BSC = 10^18 wei)
+- Solana amounts: lamports (1 SOL = 10^9 lamports)
+- Slippage/rates: basis points (1 bps = 0.01%)
+
 ## Signing Details
 
 - **EVM**: uses `eth-account`; BIP44 path `m/44'/60'/0'/0/0` for mnemonic derivation

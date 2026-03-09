@@ -222,6 +222,26 @@ Press Ctrl+C to stop.
 
 Offer `watch-orders` automatically after a real proxy order submission unless the user asked for a quiet, terse response.
 
+## Trading Parameter Reference
+
+| Parameter | Type | Description |
+|---|---|---|
+| `--slippage` | integer (bps) | Max slippage tolerance. `500` = 5%, `1000` = 10% |
+| `--auto-slippage` | flag | Let the API auto-adjust slippage based on token volatility |
+| `--use-mev` | flag | Enable MEV protection (front-running bundling) |
+| `--gas` | string | Manual gas/priority fee in smallest unit (wei for EVM, lamports for Solana) |
+| `--extra-gas` | string | Additional gas on top of estimated amount |
+| `--auto-gas` | `low` / `average` / `high` | Auto gas estimation tier. Recommended: `average` |
+| `--fee-recipient` | address | Wallet to receive fee rebate. Must pair with `--fee-recipient-rate` |
+| `--fee-recipient-rate` | integer (bps) | Rebate ratio, max 1000 (10%). Must pair with `--fee-recipient` |
+| `--limit-price` | float (USD) | Target price for limit orders |
+| `--expire-time` | integer (seconds) | Limit order expiry. `86400` = 24 hours |
+
+**Units:**
+- EVM amounts: wei (1 BNB = 10^18 wei)
+- Solana amounts: lamports (1 SOL = 10^9 lamports)
+- Slippage/rates: basis points (1 bps = 0.01%)
+
 ## Response Contract
 
 After every proxy-wallet action, answer in this order:
