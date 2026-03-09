@@ -283,6 +283,12 @@ Prefer the translated explanation first, and keep the raw API message only as su
 - Order confirmation:
   `Order confirmed: <order id>, tx hash <hash>. Spend/result: <summary>. Next: sell back, monitor, or clean up the wallet.`
 
+## Learn More
+
+- API docs: [cloud.ave.ai](https://cloud.ave.ai/)
+- Register: [cloud.ave.ai/register](https://cloud.ave.ai/register)
+- Community: [t.me/aveai_english](https://t.me/aveai_english) | [discord.gg/Z2RmAzF2](https://discord.gg/Z2RmAzF2)
+
 ## Reference
 
 See `references/trade-api-doc.md` → Proxy Wallet Trading and WebSocket Push sections.

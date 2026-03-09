@@ -266,6 +266,12 @@ Prefer the translated explanation first, then include the raw API message if it 
 - **Solana**: uses `solders`; BIP44 path `m/44'/501'/0'/0'` for mnemonic derivation
 - Individual key (`AVE_EVM_PRIVATE_KEY` / `AVE_SOLANA_PRIVATE_KEY`) takes priority over mnemonic
 
+## Learn More
+
+- API docs: [cloud.ave.ai](https://cloud.ave.ai/)
+- Register: [cloud.ave.ai/register](https://cloud.ave.ai/register)
+- Community: [t.me/aveai_english](https://t.me/aveai_english) | [discord.gg/Z2RmAzF2](https://discord.gg/Z2RmAzF2)
+
 ## Reference
 
 See `references/trade-api-doc.md` → Chain Wallet Trading section.
