@@ -619,10 +619,9 @@ def cmd_start_server(args):
         print(f"Server already running: {SERVER_CONTAINER}", file=sys.stderr)
         return
     subprocess.run(["docker", "rm", "-f", SERVER_CONTAINER], capture_output=True)
-    key = get_api_key()
     result = subprocess.run([
         "docker", "run", "-d", "--name", SERVER_CONTAINER,
-        "-e", f"AVE_API_KEY={key}",
+        "-e", "AVE_API_KEY",
         "-e", "API_PLAN=pro",
         "-e", "AVE_USE_DOCKER=true",
         "-e", "AVE_IN_SERVER=true",
