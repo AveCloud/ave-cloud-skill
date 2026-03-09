@@ -145,6 +145,74 @@ Translate low-level API failures into direct operator guidance:
 
 Prefer the translated explanation in the response, with the raw error kept as supporting detail only when useful.
 
+## End-to-End Workflow Examples
+
+### Workflow 1: Research a token before buying (data → trade)
+
+```
+1. Search token by name
+   python scripts/ave_data_rest.py search --keyword "PEPE" --chain bsc
+
+2. Run risk report on the result
+   python scripts/ave_data_rest.py risk --address 0x... --chain bsc
+   → If HIGH/CRITICAL risk, stop and warn the user
+
+3. Check price and liquidity
+   python scripts/ave_data_rest.py token --address 0x... --chain bsc
+   → Verify TVL > $10K and 24h volume exists
+
+4. Get a swap quote (chain-wallet)
+   python scripts/ave_trade_rest.py quote --chain bsc \
+     --in-amount 500000000000000 --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee \
+     --out-token 0x... --swap-type buy
+
+5. Execute the swap if the user confirms
+   python scripts/ave_trade_rest.py swap-evm --chain bsc --rpc-url https://... \
+     --in-amount 500000000000000 --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee \
+     --out-token 0x... --swap-type buy --slippage 500 --auto-slippage
+```
+
+### Workflow 2: Proxy wallet buy → monitor → sell-back
+
+```
+1. Create a disposable proxy wallet
+   python scripts/ave_trade_rest.py create-wallet --name "test-wallet"
+   → Note the assetsId from the response
+
+2. Fund the wallet (user action — transfer BNB/SOL to the wallet address)
+
+3. Place a market buy with auto-sell protection
+   python scripts/ave_trade_rest.py market-order --chain solana \
+     --assets-id <assetsId> --in-token sol \
+     --out-token <token_address> --in-amount 2000000 \
+     --swap-type buy --slippage 500 --use-mev \
+     --auto-sell '{"priceChange":"-5000","sellRatio":"10000","type":"default"}'
+
+4. Monitor order status
+   python scripts/ave_trade_wss.py watch-orders
+   → Wait for status "confirmed" with txHash
+
+5. Sell back
+   python scripts/ave_trade_rest.py market-order --chain solana \
+     --assets-id <assetsId> --in-token <token_address> \
+     --out-token sol --in-amount <full_balance> \
+     --swap-type sell --slippage 500 --use-mev
+```
+
+### Workflow 3: Live price monitoring with alerts
+
+```
+1. Search for the token to get the correct address
+   python scripts/ave_data_rest.py search --keyword "BONK" --chain solana
+
+2. Get current snapshot price
+   python scripts/ave_data_rest.py price --tokens <address>-solana
+
+3. Start live price stream (requires API_PLAN=pro)
+   python scripts/ave_data_wss.py watch-price --tokens <address>-solana
+   → Stream runs until Ctrl+C; agent summarizes price changes periodically
+```
+
 ## Reusable Response Templates
 
 Use these compact shapes consistently:

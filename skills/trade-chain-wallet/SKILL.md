@@ -203,6 +203,55 @@ python scripts/ave_trade_rest.py send-solana-tx \
   [--use-mev]
 ```
 
+## Workflow Examples
+
+### Safe first buy test on BSC
+
+```bash
+# 1. Get a quote first (no keys needed)
+python scripts/ave_trade_rest.py quote --chain bsc \
+  --in-amount 500000000000000 \
+  --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee \
+  --out-token 0xb4357054c3da8d46ed642383f03139ac7f090343 \
+  --swap-type buy
+# → Check estimated output and route. If acceptable, proceed.
+
+# 2. Execute the swap (0.0005 BNB)
+python scripts/ave_trade_rest.py swap-evm --chain bsc \
+  --rpc-url https://bsc-dataseed.binance.org \
+  --in-amount 500000000000000 \
+  --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee \
+  --out-token 0xb4357054c3da8d46ed642383f03139ac7f090343 \
+  --swap-type buy --slippage 500 --auto-slippage --use-mev
+# → Report: tx hash, spend, gas, applied slippage
+
+# 3. Sell back immediately
+python scripts/ave_trade_rest.py swap-evm --chain bsc \
+  --rpc-url https://bsc-dataseed.binance.org \
+  --in-amount <received_amount_in_wei> \
+  --in-token 0xb4357054c3da8d46ed642383f03139ac7f090343 \
+  --out-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee \
+  --swap-type sell --slippage 500 --auto-slippage --use-mev
+```
+
+### External signer workflow (create → sign externally → send)
+
+```bash
+# 1. Create unsigned transaction
+python scripts/ave_trade_rest.py create-evm-tx --chain bsc \
+  --creator-address 0xYourWallet... \
+  --in-amount 500000000000000 \
+  --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee \
+  --out-token 0xb435... --swap-type buy --slippage 500
+# → Returns requestTxId and txContent (to, data, value)
+
+# 2. User signs externally (hardware wallet, multisig, etc.)
+
+# 3. Submit the signed transaction
+python scripts/ave_trade_rest.py send-evm-tx --chain bsc \
+  --request-tx-id <requestTxId> --signed-tx 0x<hex_signed_tx> --use-mev
+```
+
 ## Response Contract
 
 After every chain-wallet action, answer in this order:
