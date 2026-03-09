@@ -132,12 +132,16 @@ Translate low-level API failures into direct operator guidance:
 | Raw issue pattern | Tell the user |
 |---|---|
 | missing API key / auth failed | credentials are missing or invalid |
+| HMAC signature mismatch | the secret key does not match; regenerate at cloud.ave.ai |
 | unsupported parameter / invalid parameter | the chosen parameter combination is not accepted by PROD |
 | insufficient balance | the wallet does not have enough spend token or gas token |
 | approval required / allowance too low | approval is needed before the sell or token spend can proceed |
 | route too small / min notional failure | the trade size is below the route minimum; increase size slightly |
 | RPC required | a user RPC node is required for local EVM signing |
+| RPC connection refused / timeout | the RPC endpoint is unreachable; try a different RPC URL |
+| transaction reverted / execution failed | the on-chain tx failed; check slippage, gas, or token tax |
 | server not running | the Docker WSS daemon must be started before using server mode |
+| plan not supported | this feature requires a higher API plan tier |
 
 Prefer the translated explanation in the response, with the raw error kept as supporting detail only when useful.
 

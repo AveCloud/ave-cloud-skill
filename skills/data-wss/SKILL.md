@@ -131,6 +131,17 @@ Guidelines:
 - Keep the ASCII chart narrow enough to render cleanly in Markdown
 - If a richer chart or image is available in the client, prefer that over ASCII
 
+## Error Translation
+
+| Raw issue pattern | User-facing explanation |
+|---|---|
+| connection closed / EOF | WebSocket disconnected; reconnect or restart the REPL |
+| invalid API key / auth failed | credentials are missing or invalid; check `AVE_API_KEY` |
+| plan not supported | WebSocket streams require `API_PLAN=pro` |
+| subscribe failed / unknown topic | the subscription topic or address format is not accepted |
+| server not running | the Docker WSS daemon must be started with `start-server` first |
+| pipe not found / FIFO error | the named pipe `/tmp/ave_pipe` is missing; restart the server container |
+
 ## Reference
 
 See `references/data-api-doc.md` for full WebSocket API reference.

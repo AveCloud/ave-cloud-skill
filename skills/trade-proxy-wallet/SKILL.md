@@ -239,12 +239,16 @@ Map common proxy-wallet failures into direct operator guidance:
 
 | Raw issue pattern | User-facing explanation |
 |---|---|
+| missing API key / auth failed | credentials are missing or invalid; check `AVE_API_KEY` and `AVE_SECRET_KEY` |
+| HMAC signature mismatch | the secret key does not match; regenerate `AVE_SECRET_KEY` at cloud.ave.ai |
 | user account not exist or deactivated | the proxy wallet account is missing or inactive |
 | transaction not found / approve not found | the requested order or approval id does not exist |
 | invalid parameter | the chosen order parameters are not accepted by PROD |
 | insufficient balance | the proxy wallet needs more spend token or native gas token |
 | route too small / min notional failure | the order size is below the route minimum; increase size slightly |
+| approval required (EVM sell) | approve the ERC-20 token for the router before selling |
 | success with empty cancel response | the cancel request was accepted, but there may be no active order data to return |
+| order status `error` in WebSocket push | check `errorMessage` in the push event for the root cause |
 
 Prefer the translated explanation first, and keep the raw API message only as supporting detail.
 
