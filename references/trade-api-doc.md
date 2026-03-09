@@ -2,7 +2,7 @@
 
 **Source:** https://docs-bot-api.ave.ai/
 **Base URL:** `https://bot-api.ave.ai`
-**Last Updated:** 2026-02-28
+**Last Updated:** 2026-03-09
 
 ---
 
@@ -128,18 +128,10 @@ Get an estimated output amount for a given input.
 Supports BSC, Ethereum, and Base chains.
 
 **Trading flow:**
-1. Approve the input token to the Router contract (skip for native coins)
+1. Approve the input token to the spender contract (skip for native coins). Get the spender address from the Quote API (`getAmountOut` → `data.spender`).
 2. Call **Create EVM Transaction** to get transaction parameters
-3. Sign the transaction client-side
+3. Sign the transaction client-side (recommend EIP-1559 standard)
 4. Call **Send Signed EVM Transaction** (or broadcast yourself)
-
-**Router Contract Addresses:**
-
-| Chain | Address |
-|-------|---------|
-| BSC | `0x4eadd85e7a6bb368eb1e3fb22b56ecac79e9058f` |
-| ETH | `0x77acf9c55106e20fa41f418e2453cdae7ba62f2f` |
-| Base | `0x574bb43779bfa604f3c5a7d35f82b0dcd9bcf0f9` |
 
 For transaction signing, see [ethers.js docs](https://docs.ethers.org/v6/api/providers/#Signer-signTransaction).
 
@@ -163,6 +155,7 @@ Constructs a transaction ready to be signed.
 | `swapType` | string | Yes | `buy` / `sell` |
 | `slippage` | string | Yes | Slippage in bps (10000 = 100%) |
 | `feeRecipient` | string | No | Address to receive trading rebate |
+| `feeRecipientRate` | string | No | Rebate fee ratio as percentage of trade amount, max 10%, in bps (e.g., `"100"` = 1%) |
 | `autoSlippage` | boolean | No | Enable auto slippage (default: `false`). Overrides `slippage` when enabled |
 
 ##### Request Example
@@ -177,6 +170,7 @@ Constructs a transaction ready to be signed.
   "swapType": "buy",
   "slippage": "500",
   "feeRecipient": "0x15a3d97326265d870FA789Cc66052E753f1003d5",
+  "feeRecipientRate": "50",
   "autoSlippage": true
 }
 ```
@@ -192,8 +186,7 @@ Constructs a transaction ready to be signed.
 | `data.swapType` | string | Trade direction |
 | `data.inTokenAddress` | string | Input token address |
 | `data.outTokenAddress` | string | Output token address |
-| `data.toAddress` | string | Transaction `to` address |
-| `data.txContent` | string | Transaction input data (hex) |
+| `data.txContent` | object | Transaction content object containing `data` (hex calldata), `to` (contract address), and `value` (native coin amount) |
 | `data.slippage` | string | Applied slippage in bps |
 | `data.minReturn` | string | Minimum acceptable output amount |
 | `data.inAmount` | string | Input amount |
@@ -202,6 +195,12 @@ Constructs a transaction ready to be signed.
 | `data.amms` | string[] | AMM route info |
 | `data.createPrice` | string | Token price at time of creation (USD) |
 | `data.requestTxId` | string | Transaction request ID (pass to send endpoint) |
+
+Observed PROD behavior on 2026-03-09:
+- The API accepted the request but returned `data.slippage = "3000"` for a request sent with `"500"`.
+- Treat `data.slippage` as the server-applied value rather than assuming the request value is preserved verbatim.
+- `feeRecipient` should be paired with `feeRecipientRate`; unpaired requests returned misleading `feeRecipientRate` errors in PROD.
+- Paired `feeRecipient` + `feeRecipientRate` requests succeeded in later live retests, including with `autoSlippage`.
 
 ##### Response Example
 
@@ -215,8 +214,11 @@ Constructs a transaction ready to be signed.
     "swapType": "buy",
     "inTokenAddress": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
     "outTokenAddress": "0xa5e4ccf218cef628c85364253e5432d2cf18c87e",
-    "toAddress": "0xa5e4ccf218cef628c85364253e5432d2cf18c87e",
-    "txContent": "0x7ff36ab5...",
+    "txContent": {
+      "data": "7ff36ab500000000000000000000000000000000000000000000000000038d7ea4c68000",
+      "to": "0xd36b6d646ac6e23672e9eedec558164c7f2d6deb",
+      "value": "1000000000000000000"
+    },
     "slippage": "500",
     "minReturn": "1000000",
     "inAmount": "1000000000000000000",
@@ -228,6 +230,10 @@ Constructs a transaction ready to be signed.
   }
 }
 ```
+
+> **Four.meme Inner Pool Restrictions:**
+> - Buy: No restrictions when buying on Four.meme inner pool.
+> - Sell: Native coin pool can only sell to native coin. ERC20 pool can only sell to the corresponding pool token. ERC20 stablecoin pool (USDT/USDC/U) supports selling to native coin via V3 Manager. Selling via Four.meme contract does not support rebates.
 
 ---
 
@@ -327,6 +333,7 @@ func signSolTx(privateKey solana.PrivateKey, txContent string) (string, error) {
 | `fee` | string | Yes | Network + node priority fee in lamports. Ave auto-allocates bundle tip and priority fee |
 | `useMev` | boolean | No | Enable MEV protection (default: `false`) |
 | `feeRecipient` | string | No | Address to receive trading rebate |
+| `feeRecipientRate` | string | No | Rebate fee ratio in bps. If `feeRecipient` is set, use the paired `feeRecipientRate` field as well |
 | `autoSlippage` | boolean | No | Enable auto slippage (default: `false`). Overrides `slippage` when enabled |
 
 ##### Request Example
@@ -342,6 +349,7 @@ func signSolTx(privateKey solana.PrivateKey, txContent string) (string, error) {
   "fee": "50000000",
   "useMev": true,
   "feeRecipient": "wfvDFTYEqsJQoaVGx7UUWcUU5r7SGNCcZcH24z8Jyc5",
+  "feeRecipientRate": "100",
   "autoSlippage": false
 }
 ```
@@ -367,6 +375,12 @@ func signSolTx(privateKey solana.PrivateKey, txContent string) (string, error) {
 | `data.createPrice` | string | Token price at creation time (USD) |
 | `data.requestTxId` | string | Transaction request ID (pass to send endpoint) |
 
+Observed PROD behavior on 2026-03-09:
+- The live API returned `data.txContext` instead of `data.txContent`.
+- The CLI now aliases `txContext` to `txContent` for compatibility.
+- Solana requests that set `feeRecipient` without `feeRecipientRate` returned `status = 2001` / `Invalid parameter: feeRecipientRate` in PROD.
+- Paired `feeRecipient` + `feeRecipientRate` requests succeeded in later live retests.
+
 ---
 
 #### Send Signed Solana Transaction
@@ -380,6 +394,10 @@ func signSolTx(privateKey solana.PrivateKey, txContent string) (string, error) {
 | `requestTxId` | string | Yes | `requestTxId` returned from `createSolanaTx` |
 | `signedTx` | string | Yes | Signed transaction (base64-encoded) |
 | `useMev` | boolean | No | Enable MEV protection (default: `false`) |
+
+Observed PROD behavior on 2026-03-09:
+- Error cases can return HTTP 200 with a non-success JSON `status` code such as `3011`.
+- The CLI treats non-success JSON `status` values as failures even when the HTTP status is 200.
 
 ##### Request Example
 
@@ -1256,6 +1274,7 @@ Receive real-time notifications for proxy wallet order updates.
 
 | Date | Changes |
 |------|---------|
+| 2026-03-09 | Chain Wallet API: custom rebate fee (`feeRecipientRate`) for EVM createEvmTx; `txContent` response changed from string to object (`{data, to, value}`); Four.meme inner pool restrictions documented |
 | 2026-02-28 | Chain Wallet Trading API: added Quote API |
 | 2026-02-04 | Chain Wallet Trading API: added automatic slippage support |
 | 2025-12-24 | Chain Wallet API: trading rebates (20% ratio), fee increased to 0.6% |

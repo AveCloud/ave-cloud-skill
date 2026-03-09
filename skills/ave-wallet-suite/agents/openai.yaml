@@ -1,0 +1,7 @@
+interface:
+  display_name: "AVE Wallet Suite"
+  short_description: "Route AVE data, wallet, and trading flows"
+  default_prompt: "Use $ave-wallet-suite to route this AVE request and guide the next action."
+
+policy:
+  allow_implicit_invocation: true

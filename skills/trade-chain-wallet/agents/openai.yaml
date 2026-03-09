@@ -1,0 +1,7 @@
+interface:
+  display_name: "AVE Chain Wallet Trading"
+  short_description: "Self-custody DEX swaps on BSC, ETH, Base, and Solana via AVE Cloud"
+  default_prompt: "Use $ave-trade-chain-wallet to execute a self-custody DEX trade where the user controls their own private keys."
+
+policy:
+  allow_implicit_invocation: false

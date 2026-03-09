@@ -322,22 +322,41 @@ def cmd_token(args):
 
 
 def cmd_price(args):
-    payload = {"token_ids": args.tokens}
+    evm_chains = ("-bsc", "-eth", "-base")
+    payload = {"token_ids": [token.lower() if token.endswith(evm_chains) else token for token in args.tokens]}
     if args.tvl_min:
-        payload["tvl_min"] = args.tvl_min
+        payload["tvl_min"] = int(args.tvl_min) if args.tvl_min.is_integer() else args.tvl_min
     if args.volume_min:
-        payload["tx_24h_volume_min"] = args.volume_min
+        payload["tx_24h_volume_min"] = int(args.volume_min) if args.volume_min.is_integer() else args.volume_min
     handle_response(api_post("/tokens/price", payload))
 
 
 def cmd_kline_token(args):
-    params = {"interval": args.interval, "size": args.size}
-    handle_response(api_get(f"/klines/token/{args.address}-{args.chain}", params))
+    params = {"interval": args.interval, "limit": args.size}
+    resp = api_get(f"/klines/token/{args.address}-{args.chain}", params)
+    if resp.status_code >= 400:
+        raise RuntimeError(f"API error {resp.status_code}: {resp.text}")
+    body = resp.json()
+    points = body.get("data", {}).get("points")
+    if isinstance(points, list) and len(points) > args.size:
+        body["data"]["points"] = points[-args.size:]
+        body["data"]["limit"] = args.size
+        body["data"]["total_count"] = len(body["data"]["points"])
+    print(json.dumps(body, indent=2))
 
 
 def cmd_kline_pair(args):
-    params = {"interval": args.interval, "size": args.size}
-    handle_response(api_get(f"/klines/pair/{args.address}-{args.chain}", params))
+    params = {"interval": args.interval, "limit": args.size}
+    resp = api_get(f"/klines/pair/{args.address}-{args.chain}", params)
+    if resp.status_code >= 400:
+        raise RuntimeError(f"API error {resp.status_code}: {resp.text}")
+    body = resp.json()
+    points = body.get("data", {}).get("points")
+    if isinstance(points, list) and len(points) > args.size:
+        body["data"]["points"] = points[-args.size:]
+        body["data"]["limit"] = args.size
+        body["data"]["total_count"] = len(body["data"]["points"])
+    print(json.dumps(body, indent=2))
 
 
 def cmd_holders(args):
