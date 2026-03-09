@@ -99,9 +99,8 @@ def _reexec_in_docker(script_name):
         "AVE_EVM_PRIVATE_KEY", "AVE_SOLANA_PRIVATE_KEY", "AVE_MNEMONIC",
         "AVE_BSC_RPC_URL", "AVE_ETH_RPC_URL", "AVE_BASE_RPC_URL",
     ):
-        val = os.environ.get(var)
-        if val:
-            env_args += ["-e", f"{var}={val}"]
+        if os.environ.get(var):
+            env_args += ["-e", var]
     result = subprocess.run([
         "docker", "run", "--rm",
         "--entrypoint", "python",
@@ -302,6 +301,11 @@ def handle_response(resp):
             msg = body.get("msg", "")
             raise RuntimeError(f"API status {status}: {msg}".strip())
     print(json.dumps(body, indent=2))
+
+
+def _response_ok(resp_json):
+    status = resp_json.get("status")
+    return status is None or status in (0, 1, 200)
 
 
 def _rpc_call(rpc_url, method, params):
@@ -519,7 +523,7 @@ def cmd_swap_evm(args):
 
     resp = trade_post("/v1/thirdParty/chainWallet/createEvmTx", create_payload)
     resp_json = resp.json()
-    if resp.status_code >= 400 or resp_json.get("status") != 200:
+    if resp.status_code >= 400 or not _response_ok(resp_json):
         raise RuntimeError(f"create-evm-tx failed: {resp.text}")
     create_data = resp_json["data"]
 
@@ -586,7 +590,7 @@ def cmd_swap_solana(args):
 
     resp = trade_post("/v1/thirdParty/chainWallet/createSolanaTx", create_payload)
     resp_json = resp.json()
-    if resp.status_code >= 400 or resp_json.get("status") != 200:
+    if resp.status_code >= 400 or not _response_ok(resp_json):
         raise RuntimeError(f"create-solana-tx failed: {resp.text}")
     create_data = resp_json["data"]
     tx_content = create_data.get("txContent") or create_data.get("txContext")
