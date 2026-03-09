@@ -72,6 +72,15 @@ Get an API key at https://cloud.ave.ai/register.
 EVM: `bsc`, `eth`, `base`
 Solana: `solana`
 
+## Token And Address Conventions
+
+- EVM native token input uses `0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee`
+- Solana native token input uses `sol`
+- Pair `feeRecipient` with `feeRecipientRate` on both EVM and Solana if you set either
+- Do not lowercase Solana addresses
+- For EVM, preserve the user-provided address in output, but normalize only when an endpoint explicitly requires it
+- Treat wrapped/native distinctions carefully in explanations: `WBNB` is a token, `BNB` is the native coin
+
 ## First-Turn Playbook
 
 For a new chain-wallet trading request:

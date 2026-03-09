@@ -65,6 +65,14 @@ Get keys at https://cloud.ave.ai/register. Proxy Wallet API must be activated on
 
 `bsc`, `eth`, `base`, `solana`
 
+## Token And Address Conventions
+
+- EVM native token orders use `0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee`
+- Solana native token orders use `sol`
+- EVM token approvals are only for ERC-20 style tokens, not native coins
+- Preserve Solana addresses exactly as provided
+- If `feeRecipient` is set, pair it with `feeRecipientRate`
+
 ## First-Turn Playbook
 
 For a new proxy-wallet trading request:
