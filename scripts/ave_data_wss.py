@@ -66,8 +66,8 @@ def _exec_in_ephemeral_container(args_list):
     if sys.stdin.isatty() and sys.stdout.isatty():
         cmd.append("-t")
     cmd.extend([
-        "-e", f"AVE_API_KEY={get_api_key()}",
-        "-e", "API_PLAN=pro",
+        "-e", "AVE_API_KEY",
+        "-e", "API_PLAN",
         "-e", "AVE_USE_DOCKER=true",
         "-e", "AVE_IN_SERVER=true",
         "ave-cloud",
