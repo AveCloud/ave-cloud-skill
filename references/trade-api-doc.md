@@ -199,9 +199,8 @@ Constructs a transaction ready to be signed.
 Observed PROD behavior on 2026-03-09:
 - The API accepted the request but returned `data.slippage = "3000"` for a request sent with `"500"`.
 - Treat `data.slippage` as the server-applied value rather than assuming the request value is preserved verbatim.
-- `feeRecipientRate` currently returned `status = 2001` / `Invalid parameter: feeRecipientRate` in PROD despite being documented here.
-- Reproducible live probes with `feeRecipient` also returned `status = 2001` / `Invalid parameter: feeRecipientRate`, even though the client did not send a `feeRecipientRate` field.
-- Adding `autoSlippage` to the same `feeRecipient` request returned the same `feeRecipientRate` error.
+- `feeRecipient` should be paired with `feeRecipientRate`; unpaired requests returned misleading `feeRecipientRate` errors in PROD.
+- Paired `feeRecipient` + `feeRecipientRate` requests succeeded in later live retests, including with `autoSlippage`.
 
 ##### Response Example
 
@@ -380,6 +379,7 @@ Observed PROD behavior on 2026-03-09:
 - The live API returned `data.txContext` instead of `data.txContent`.
 - The CLI now aliases `txContext` to `txContent` for compatibility.
 - Solana requests that set `feeRecipient` without `feeRecipientRate` returned `status = 2001` / `Invalid parameter: feeRecipientRate` in PROD.
+- Paired `feeRecipient` + `feeRecipientRate` requests succeeded in later live retests.
 
 ---
 

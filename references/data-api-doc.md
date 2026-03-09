@@ -269,6 +269,14 @@ Subscribe message:
 }
 ```
 
+CLI note:
+- `python scripts/ave_data_wss.py watch-kline --format markdown` renders these events as periodic Markdown snapshots with an ASCII mini-chart instead of raw JSON.
+- In Docker mode, the formatted watcher can run directly in a one-shot container; raw watch mode still uses the background daemon flow.
+
+Observed PROD behavior on 2026-03-09:
+- Live kline pushes were also seen in a nested envelope with `result.topic = "kline"` and OHLCV data under `result.kline.usd`.
+- The CLI formatter now normalizes both the documented flat shape and the live nested shape.
+
 ### Subscribe: Live Price Changes
 
 Subscribe message:
