@@ -1,6 +1,6 @@
 ---
 name: ave-trade-chain-wallet
-version: 1.0.0
+version: 2.0.0
 description: |
   Execute self-custody DEX trades via the AVE Cloud Chain Wallet Trading API (https://bot-api.ave.ai).
   Use this skill whenever the user wants to:
@@ -36,6 +36,10 @@ Self-custody DEX trading via the AVE Cloud Chain Wallet API. User controls all p
 Available on all plan tiers (free, normal, pro).
 
 **Trading fee:** 0.6% | **Rebate to `feeRecipient`:** 20%
+
+Observed PROD caveats on 2026-03-09:
+- EVM `--fee-recipient` and `--fee-recipient-rate` were both rejected by reproducible PROD probes, with the `feeRecipient` case returning a misleading `feeRecipientRate` error.
+- Solana `--fee-recipient` should be paired with `--fee-recipient-rate`; unpaired `feeRecipient` returned a `feeRecipientRate` error in PROD.
 
 ## Setup
 
@@ -82,11 +86,13 @@ python scripts/ave_trade_rest.py quote \
 
 ### High-level: swap EVM (create + sign + send)
 
-Requires `AVE_EVM_PRIVATE_KEY` or `AVE_MNEMONIC`.
+Requires `AVE_EVM_PRIVATE_KEY` or `AVE_MNEMONIC`, plus a user-provided RPC node via `--rpc-url` or `AVE_BSC_RPC_URL` / `AVE_ETH_RPC_URL` / `AVE_BASE_RPC_URL`.
+The CLI uses that RPC only for local signing metadata (nonce, gas price, gas estimate) and submits the signed transaction through Ave's `sendSignedEvmTx` API.
 
 ```bash
 python scripts/ave_trade_rest.py swap-evm \
   --chain bsc \
+  --rpc-url https://your-bsc-rpc.example \
   --in-amount 1000000000000000000 \
   --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee \
   --out-token 0xb4357054c3da8d46ed642383f03139ac7f090343 \
@@ -94,7 +100,8 @@ python scripts/ave_trade_rest.py swap-evm \
   --slippage 500 \
   [--auto-slippage] \
   [--use-mev] \
-  [--fee-recipient 0x...]
+  [--fee-recipient 0x...] \
+  [--fee-recipient-rate 50]
 ```
 
 ### High-level: swap Solana (create + sign + send)
@@ -111,7 +118,8 @@ python scripts/ave_trade_rest.py swap-solana \
   --fee 50000000 \
   [--auto-slippage] \
   [--use-mev] \
-  [--fee-recipient ...]
+  [--fee-recipient ...] \
+  [--fee-recipient-rate 100]
 ```
 
 ### Low-level: create EVM transaction (external signer workflow)
