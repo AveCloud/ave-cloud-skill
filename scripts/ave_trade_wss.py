@@ -34,6 +34,7 @@ def cmd_watch_orders(args):
     def on_open(ws):
         print("Connected. Subscribing to botswap...", file=sys.stderr)
         ws.send(subscribe_msg)
+        print("Subscribed. Waiting for botswap events...", file=sys.stderr)
 
     def on_message(ws, message):
         try:
