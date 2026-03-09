@@ -71,6 +71,17 @@ Get an API key at https://cloud.ave.ai/register.
 EVM: `bsc`, `eth`, `base`
 Solana: `solana`
 
+## First-Turn Playbook
+
+For a new chain-wallet trading request:
+
+1. Identify whether the user wants a quote, unsigned transaction, signed send, or a full buy/sell test cycle
+2. For real trades, confirm the spend cap and prefer a create-only preflight first
+3. For unfamiliar tokens, pair the trade flow with a risk or liquidity sanity check before execution
+4. For EVM `swap-evm`, require a user RPC node via `--rpc-url` or `AVE_<CHAIN>_RPC_URL`
+
+Prefer the low-level `create-*` and `send-*` flow when you need tighter control over gas, fees, or request IDs.
+
 ## Operations
 
 ### Get swap quote
@@ -170,6 +181,17 @@ python scripts/ave_trade_rest.py send-solana-tx \
   --signed-tx ATINUByp... \
   [--use-mev]
 ```
+
+## Response Contract
+
+After every chain-wallet action, answer in this order:
+
+1. Outcome: quote created, tx created, tx submitted, or tx confirmed
+2. Spend and fee impact: input amount, gas / fee, and any server-applied slippage difference
+3. Identifiers: `requestTxId`, tx hash, and chain
+4. Next step: sign, send, confirm, approve, or sell back
+
+If a sell path requires approval, say that explicitly before retrying.
 
 ## Signing Details
 
