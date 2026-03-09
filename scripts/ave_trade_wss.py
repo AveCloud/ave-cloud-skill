@@ -9,7 +9,7 @@ import argparse
 import json
 import sys
 
-from ave_trade_rest import get_api_key
+from ave_trade_rest import IN_SERVER, _docker_gate, get_api_key
 
 TRADE_WSS_BASE = "wss://bot-api.ave.ai/thirdws"
 
@@ -34,6 +34,7 @@ def cmd_watch_orders(args):
     def on_open(ws):
         print("Connected. Subscribing to botswap...", file=sys.stderr)
         ws.send(subscribe_msg)
+        print("Subscribed. Waiting for botswap events...", file=sys.stderr)
 
     def on_message(ws, message):
         try:
@@ -60,6 +61,9 @@ def cmd_watch_orders(args):
 
 
 def main():
+    if not IN_SERVER:
+        _docker_gate("ave_trade_wss.py")
+
     parser = argparse.ArgumentParser(description="AVE Cloud Trade WebSocket client")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser(

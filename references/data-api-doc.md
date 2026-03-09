@@ -50,6 +50,10 @@ Body: { "token_ids": ["address-chain", ...], "tvl_min": 0, "tx_24h_volume_min": 
 ```
 Max 200 tokens per request.
 
+Observed PROD behavior on 2026-03-09:
+- Plain `token_ids` requests succeed.
+- Filtered requests work when `token_ids` are lowercased and `tvl_min` / `tx_24h_volume_min` are sent as JSON numbers.
+
 ### Rank Topics
 ```
 GET /v2/ranks/topics
@@ -73,23 +77,31 @@ price changes (5m/1h/4h/24h), lock/burn amounts, DEX pairs, creator, honeypot, t
 
 ### Kline by Pair
 ```
-GET /v2/klines/pair/{pair_address}-{chain}?interval={minutes}&size={count}
+GET /v2/klines/pair/{pair_address}-{chain}?interval={minutes}&limit={count}
 ```
 
 ### Kline by Token
 ```
-GET /v2/klines/token/{token_address}-{chain}?interval={minutes}&size={count}
+GET /v2/klines/token/{token_address}-{chain}?interval={minutes}&limit={count}
 ```
 Valid intervals (minutes): `1, 5, 15, 30, 60, 120, 240, 1440, 4320, 10080, 43200, 525600, 2628000`
-Default: interval=60, size=600, max size=1000
+Default: interval=60, limit=600, max limit=1000
 
 Kline category param (optional): `u` = USDT price, `r` = relative, `m` = main token price
+
+Observed PROD behavior on 2026-03-09:
+- The API may ignore the requested `size` and return a much larger `points` set.
+- The CLI trims the returned `points` array locally to the requested `--size`.
 
 ### Top 100 Holders
 ```
 GET /v2/tokens/top100/{token_address}-{chain}
 ```
 Returns: holder address, balance, percentage, buy/sell history per holder.
+
+Observed PROD behavior on 2026-03-09:
+- Some very large blue-chip/stable tokens returned an empty list even though the endpoint succeeded.
+- Use a token with known populated holder data, such as BSC WBNB, for smoke testing.
 
 ### Swap Transactions
 ```
@@ -119,6 +131,10 @@ GET /v2/contracts/{token_address}-{chain}
 ```
 Returns: risk_level (LOW/MEDIUM/HIGH/CRITICAL), risk_score, honeypot flag, buy_tax, sell_tax,
 owner address, ownership renounced, mint/burn functions, top holder concentration, DEX liquidity.
+
+Observed PROD behavior on 2026-03-09:
+- Some blue-chip stablecoins returned `SUCCESS: token not found`.
+- Use BSC WBNB or another token with known coverage for smoke tests.
 
 ## Common Chain Identifiers
 
@@ -252,6 +268,14 @@ Subscribe message:
   "volume": 85000.0
 }
 ```
+
+CLI note:
+- `python scripts/ave_data_wss.py watch-kline --format markdown` renders these events as periodic Markdown snapshots with an ASCII mini-chart instead of raw JSON.
+- In Docker mode, the formatted watcher can run directly in a one-shot container; raw watch mode still uses the background daemon flow.
+
+Observed PROD behavior on 2026-03-09:
+- Live kline pushes were also seen in a nested envelope with `result.topic = "kline"` and OHLCV data under `result.kline.usd`.
+- The CLI formatter now normalizes both the documented flat shape and the live nested shape.
 
 ### Subscribe: Live Price Changes
 

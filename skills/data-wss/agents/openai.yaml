@@ -1,0 +1,7 @@
+interface:
+  display_name: "AVE Data WebSocket"
+  short_description: "Stream live prices, swaps, and klines via AVE Cloud WebSocket API"
+  default_prompt: "Use $ave-data-wss to stream real-time on-chain data from the AVE Cloud WebSocket API."
+
+policy:
+  allow_implicit_invocation: true
