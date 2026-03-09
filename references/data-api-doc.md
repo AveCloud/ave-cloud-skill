@@ -77,15 +77,15 @@ price changes (5m/1h/4h/24h), lock/burn amounts, DEX pairs, creator, honeypot, t
 
 ### Kline by Pair
 ```
-GET /v2/klines/pair/{pair_address}-{chain}?interval={minutes}&size={count}
+GET /v2/klines/pair/{pair_address}-{chain}?interval={minutes}&limit={count}
 ```
 
 ### Kline by Token
 ```
-GET /v2/klines/token/{token_address}-{chain}?interval={minutes}&size={count}
+GET /v2/klines/token/{token_address}-{chain}?interval={minutes}&limit={count}
 ```
 Valid intervals (minutes): `1, 5, 15, 30, 60, 120, 240, 1440, 4320, 10080, 43200, 525600, 2628000`
-Default: interval=60, size=600, max size=1000
+Default: interval=60, limit=600, max limit=1000
 
 Kline category param (optional): `u` = USDT price, `r` = relative, `m` = main token price
 

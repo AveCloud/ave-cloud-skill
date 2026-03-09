@@ -332,7 +332,7 @@ def cmd_price(args):
 
 
 def cmd_kline_token(args):
-    params = {"interval": args.interval, "size": args.size}
+    params = {"interval": args.interval, "limit": args.size}
     resp = api_get(f"/klines/token/{args.address}-{args.chain}", params)
     if resp.status_code >= 400:
         raise RuntimeError(f"API error {resp.status_code}: {resp.text}")
@@ -346,7 +346,7 @@ def cmd_kline_token(args):
 
 
 def cmd_kline_pair(args):
-    params = {"interval": args.interval, "size": args.size}
+    params = {"interval": args.interval, "limit": args.size}
     resp = api_get(f"/klines/pair/{args.address}-{args.chain}", params)
     if resp.status_code >= 400:
         raise RuntimeError(f"API error {resp.status_code}: {resp.text}")
