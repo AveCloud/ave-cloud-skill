@@ -222,6 +222,67 @@ Press Ctrl+C to stop.
 
 Offer `watch-orders` automatically after a real proxy order submission unless the user asked for a quiet, terse response.
 
+## Workflow Examples
+
+### Full proxy wallet lifecycle (create → buy → monitor → sell → cleanup)
+
+```bash
+# 1. Create a disposable test wallet
+python scripts/ave_trade_rest.py create-wallet --name "test-bot-1"
+# → Note assetsId and wallet addresses per chain
+
+# 2. User funds the wallet (transfer SOL to the Solana address)
+
+# 3. Place a market buy with stop-loss protection
+python scripts/ave_trade_rest.py market-order --chain solana \
+  --assets-id <assetsId> \
+  --in-token sol \
+  --out-token 3gWxcrL1KiZp9P6zVgNsiNnF8N3zYw2Vic4usW4ipump \
+  --in-amount 2000000 --swap-type buy --slippage 500 --use-mev \
+  --auto-sell '{"priceChange":"-5000","sellRatio":"10000","type":"default"}'
+# → Returns order ID
+
+# 4. Monitor order status via WebSocket
+python scripts/ave_trade_wss.py watch-orders
+# → Wait for "confirmed" status with txHash
+
+# 5. Check order result
+python scripts/ave_trade_rest.py get-swap-orders --chain solana --ids <order_id>
+
+# 6. Sell back
+python scripts/ave_trade_rest.py market-order --chain solana \
+  --assets-id <assetsId> \
+  --in-token 3gWxcrL1KiZp9P6zVgNsiNnF8N3zYw2Vic4usW4ipump \
+  --out-token sol --in-amount <full_token_balance> \
+  --swap-type sell --slippage 500 --use-mev
+
+# 7. Cleanup: delete the test wallet
+python scripts/ave_trade_rest.py delete-wallet --assets-ids <assetsId>
+```
+
+### EVM limit order with approval
+
+```bash
+# 1. Approve the ERC-20 token for trading (one-time per token)
+python scripts/ave_trade_rest.py approve-token --chain bsc \
+  --assets-id <assetsId> --token-address 0x55d3...
+
+# 2. Check approval status
+python scripts/ave_trade_rest.py get-approval --chain bsc --ids <approval_id>
+# → Wait for confirmed status
+
+# 3. Place a limit sell order
+python scripts/ave_trade_rest.py limit-order --chain bsc \
+  --assets-id <assetsId> \
+  --in-token 0x55d3... --out-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee \
+  --in-amount 1000000000000000000 --swap-type sell \
+  --slippage 500 --use-mev --limit-price 1.05 --expire-time 86400
+
+# 4. Check or cancel
+python scripts/ave_trade_rest.py get-limit-orders --chain bsc --assets-id <assetsId> --status waiting
+python scripts/ave_trade_rest.py cancel-limit-order --chain bsc --ids <order_id>
+```
+
 ## Trading Parameter Reference
 
 | Parameter | Type | Description |

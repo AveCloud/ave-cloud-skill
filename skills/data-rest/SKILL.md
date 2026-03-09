@@ -166,6 +166,38 @@ python scripts/ave_data_rest.py chains
 python scripts/ave_data_rest.py main-tokens --chain <chain>
 ```
 
+## Workflow Examples
+
+### Token due diligence
+
+```bash
+# 1. Search by name
+python scripts/ave_data_rest.py search --keyword "DOGE" --chain bsc --limit 5
+
+# 2. Get full token detail (price, TVL, volume, pairs)
+python scripts/ave_data_rest.py token --address 0xbA2aE424d960c26247Dd6c32edC70B295c744C43 --chain bsc
+
+# 3. Check risk/honeypot report
+python scripts/ave_data_rest.py risk --address 0xbA2aE424d960c26247Dd6c32edC70B295c744C43 --chain bsc
+
+# 4. Check holder concentration
+python scripts/ave_data_rest.py holders --address 0xbA2aE424d960c26247Dd6c32edC70B295c744C43 --chain bsc
+```
+
+Present as: search card → risk summary (LOW/MED/HIGH) → holder concentration warning if top 10 > 50%.
+
+### Multi-token price comparison
+
+```bash
+# Batch query up to 200 tokens
+python scripts/ave_data_rest.py price \
+  --tokens 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c-bsc \
+           0x2170Ed0880ac9A755fd29B2688956BD959F933F8-bsc \
+           EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v-solana
+```
+
+Present as: price table with 24h change, sorted by market cap.
+
 ## Formatting responses
 
 - **Token detail**: show price, 24h change, market cap, volume, TVL, top DEX pairs, risk level

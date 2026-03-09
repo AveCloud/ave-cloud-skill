@@ -108,6 +108,41 @@ python scripts/ave_data_wss.py stop-server    # stop it
 python scripts/ave_data_wss.py serve          # run in foreground (used as Docker entrypoint)
 ```
 
+## Workflow Examples
+
+### Monitor a new token launch
+
+```bash
+# 1. Start REPL
+python scripts/ave_data_wss.py wss-repl
+
+# 2. Subscribe to swap events on the token's pair
+> subscribe tx <pair_address> bsc
+
+# 3. Watch for buy/sell volume pattern (stream runs until unsubscribe)
+# Agent should summarize: buy vs sell count, large txs, price direction
+
+# 4. Switch to price monitoring
+> unsubscribe
+> subscribe price <token_address>-bsc
+
+# 5. Exit
+> quit
+```
+
+### Kline monitoring with Docker daemon
+
+```bash
+# 1. Start persistent server
+python scripts/ave_data_wss.py start-server
+
+# 2. Stream kline updates (1-minute candles)
+python scripts/ave_data_wss.py watch-kline --address <pair_address> --chain bsc --interval k1
+
+# 3. When done, stop the server
+python scripts/ave_data_wss.py stop-server
+```
+
 ## Live Kline Presentation
 
 For OpenClaw users, do not treat raw JSON as the primary experience for live kline monitoring.
