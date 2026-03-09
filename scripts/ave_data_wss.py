@@ -301,6 +301,11 @@ def cmd_watch_tx(args):
             "jsonrpc": "2.0", "method": "subscribe",
             "params": [args.topic, args.address, args.chain], "id": 1,
         }))
+        print(
+            f"Connected. Subscribed to {args.topic} for {args.address} on {args.chain}. "
+            "Waiting for events...",
+            file=sys.stderr,
+        )
     _wss_connect(on_open)
 
 
@@ -322,6 +327,11 @@ def cmd_watch_kline(args):
             "jsonrpc": "2.0", "method": "subscribe",
             "params": ["kline", args.address, args.interval, args.chain], "id": 1,
         }))
+        print(
+            f"Connected. Subscribed to kline for {args.address} on {args.chain} "
+            f"({args.interval}). Waiting for events...",
+            file=sys.stderr,
+        )
     _wss_connect(on_open, on_message=on_message)
 
 
@@ -331,6 +341,10 @@ def cmd_watch_price(args):
             "jsonrpc": "2.0", "method": "subscribe",
             "params": ["price", args.tokens], "id": 1,
         }))
+        print(
+            f"Connected. Subscribed to price for {len(args.tokens)} token(s). Waiting for events...",
+            file=sys.stderr,
+        )
     _wss_connect(on_open)
 
 
