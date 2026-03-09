@@ -46,6 +46,20 @@ Get a free key at https://cloud.ave.ai/register.
 
 Rate limiting is handled by a built-in file-based limiter (stdlib only). Set `AVE_USE_DOCKER=true` to use `requests-ratelimiter` instead (auto-set inside Docker).
 
+## Rate Limits
+
+| `API_PLAN` | Read TPS |
+|---|---|
+| `free` | 1 |
+| `normal` | 5 |
+| `pro` | 20 |
+
+## Supported Chains
+
+Covers 130+ chains. Common chain IDs: `bsc`, `eth`, `base`, `solana`, `tron`, `polygon`, `arbitrum`, `avalanche`, `sui`, `ton`, `aptos`
+
+Use `python scripts/ave_data_rest.py chains` to list all supported chain identifiers.
+
 ## How to use this skill
 
 1. Identify what the user wants from the operations below
@@ -68,7 +82,25 @@ python scripts/ave_data_rest.py search --keyword <keyword> [--chain <chain>] [--
 python scripts/ave_data_rest.py platform-tokens --platform <platform>
 ```
 
-Common platforms: `hot`, `new`, `meme`, `pump_in_hot`, `pump_in_new`, `fourmeme_in_hot`, `bonk_in_hot`, `nadfun_in_hot`
+General: `hot`, `new`, `meme`, `alpha`, `gold`, `inclusion`, `bsc_hot`
+
+Launchpad-specific platforms follow the pattern `{launchpad}_{in|out}_{hot|new|almost}`:
+
+| Launchpad | Chains | Prefixes |
+|---|---|---|
+| `pump` / `pump_all` | Solana | `pump_in_hot`, `pump_in_new`, `pump_in_almost`, `pump_out_hot`, `pump_out_new` |
+| `fourmeme` | BSC | `fourmeme_in_hot`, `fourmeme_in_new`, `fourmeme_in_almost`, `fourmeme_out_hot`, `fourmeme_out_new` |
+| `bonk` | Solana | `bonk_in_hot`, `bonk_in_new`, `bonk_in_almost`, `bonk_out_hot`, `bonk_out_new` |
+| `nadfun` | Monad | `nadfun_in_hot`, `nadfun_in_new`, `nadfun_in_almost`, `nadfun_out_hot`, `nadfun_out_new` |
+| `boop` | Solana | `boop_in_hot`, `boop_in_new`, `boop_in_almost`, `boop_out_hot`, `boop_out_new` |
+| `cookpump` | — | `cookpump_in_hot`, `cookpump_in_new`, `cookpump_in_almost`, `cookpump_out_hot`, `cookpump_out_new` |
+| `flap` / `xflap` | — | `flap_in_hot`, `xflap_in_hot`, etc. |
+| `grafun` | — | `grafun_in_hot`, `grafun_in_new`, `grafun_in_almost`, `grafun_out_hot`, `grafun_out_new` |
+| `meteora` | Solana | `meteora_in_hot`, `meteora_in_new`, `meteora_out_hot`, `meteora_out_new` |
+| `sunpump` | Tron | `sunpump_in_hot`, `sunpump_in_new`, `sunpump_in_almost`, `sunpump_out_hot`, `sunpump_out_new` |
+| Others | Various | `baseapp`, `basememe`, `bn`, `bankr`, `clanker`, `heaven`, `klik`, `moonshot`, `movepump`, `popme`, `xdyorswap`, `zoracontent`, `zoracreator` |
+
+Suffix meanings: `in` = still on launchpad, `out` = graduated to DEX, `hot` = trending, `new` = recently launched, `almost` = near graduation
 
 ### Token detail
 
