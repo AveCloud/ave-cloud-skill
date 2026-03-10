@@ -34,6 +34,7 @@ metadata:
 # ave-data-rest
 
 Query on-chain token data via the AVE Cloud Data REST API. Covers 130+ blockchains and 300+ DEXs.
+For shared token-link and agent operating rules, see [operator-playbook.md](../../references/operator-playbook.md).
 
 ## Setup
 
@@ -106,6 +107,18 @@ Suffix meanings: `in` = still on launchpad, `out` = graduated to DEX, `hot` = tr
 
 ```bash
 python scripts/ave_data_rest.py token --address <contract_address> --chain <chain>
+```
+
+When you know the token identifier, include the AVE Pro deep link in the user-facing response:
+
+```text
+https://pro.ave.ai/token/<contract_address>-<chain>
+```
+
+Example:
+
+```text
+https://pro.ave.ai/token/0x833679c9a3e0bb7258aa3a71162e2bd42bea4444-bsc
 ```
 
 ### Token prices (batch, up to 200)
@@ -208,6 +221,11 @@ Present as: price table with 24h change, sorted by market cap.
 - **Risk report**: lead with risk level (LOW/MEDIUM/HIGH/CRITICAL), then key findings
 - **Search**: table with symbol, name, chain, address, price, 24h change
 
+For chat-first clients:
+- prefer one primary token card plus compact alternates
+- avoid wide tables unless the user explicitly asks for them
+- include the AVE Pro token link when the contract and chain are known
+
 ## Error Translation
 
 When the API response is vague, translate it into operator terms:
@@ -258,12 +276,49 @@ Presentation rules:
 - If the user is operating in English, keep the same card structure but translate labels
 - Shorten long addresses only when space is constrained; otherwise show the full contract on the main contract line
 - Use `0.0{n}1234` style formatting for very small prices when that improves readability
-- If multiple chains or duplicate symbols exist, say that first, then show the top 3 to 5 candidate cards
+- Add the AVE Pro token-detail link when the contract and chain are known: `https://pro.ave.ai/token/<contract_address>-<chain>`
+- If multiple chains or duplicate symbols exist, say that first and do not pretend one is correct unless contract, chain, liquidity, or exact-name match clearly makes it primary
 - If there is one obvious best match, show one full card and list the other candidates more compactly below it
+- If there is no obvious best match, show compact alternates only and ask the user to pick by chain or contract
+
+Compact English example:
+
+```text
+📌 [bsc] ECO (EcoVerse)
+📄 Contract: 0xae04...
+💲 Price: $0.0{4}766
+💰 MCap: $76.61K
+💧 Liquidity: $21.14K
+📈 15m: -12.14%, 24h: +130.85%
+🔍 Risk: HIGH
+🔗 https://pro.ave.ai/token/0xae04efc49367ee34c1acfe75c828a3023024174e-bsc
+```
 
 Desktop / API-style fallback:
 - Use a concise Markdown table first
 - Then show one highlighted card in the same field order when a primary result is clear
+
+Risk-only response template:
+
+```text
+Risk: HIGH
+Key findings:
+- hidden owner
+- holder concentration
+- unaudited contract
+Next: review liquidity and recent tx flow before trading
+```
+
+Holder summary template:
+
+```text
+Holders: 617
+Top concentration:
+- top 1: 13.7%
+- top 5 total: ...
+- top 10 total: ...
+Read: moderately concentrated / highly concentrated
+```
 
 ## Learn More
 

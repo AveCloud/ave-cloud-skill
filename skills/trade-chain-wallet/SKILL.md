@@ -34,6 +34,8 @@ metadata:
 
 Self-custody DEX trading via the AVE Cloud Chain Wallet API. User controls all private keys.
 Available on all plan tiers (free, normal, pro).
+Use this when the user explicitly wants self-custody or local signing. If proxy-wallet and chain-wallet are both acceptable, prefer proxy-wallet instead.
+For shared trade-path preference and current PROD quirks, see [operator-playbook.md](../../references/operator-playbook.md).
 
 **Trading fee:** 0.6% | **Rebate to `feeRecipient`:** 20%
 
@@ -90,7 +92,35 @@ For a new chain-wallet trading request:
 3. For unfamiliar tokens, pair the trade flow with a risk or liquidity sanity check before execution
 4. For EVM `swap-evm`, require a user RPC node via `--rpc-url` or `AVE_<CHAIN>_RPC_URL`
 
+If the user has not asked for self-custody and a proxy-wallet flow would work, route back to `ave-trade-proxy-wallet` instead of continuing here.
+
 Prefer the low-level `create-*` and `send-*` flow when you need tighter control over gas, fees, or request IDs.
+
+## State To Preserve
+
+Once known, keep these visible across turns:
+
+- chain
+- input token
+- output token
+- input amount
+- spend cap
+- `requestTxId`
+- tx hash
+- RPC URL requirement status
+- whether the action is create-only, send-only, or full execution
+
+Next-turn restatement template:
+
+```text
+State:
+- chain: ...
+- pair: ... -> ...
+- spend cap: ...
+- requestTxId: ...
+- tx hash: ...
+- mode: create-only / send-only / full execution
+```
 
 ## Safe Test Defaults
 
@@ -260,6 +290,16 @@ After every chain-wallet action, answer in this order:
 2. Spend and fee impact: input amount, gas / fee, and any server-applied slippage difference
 3. Identifiers: `requestTxId`, tx hash, and chain
 4. Next step: sign, send, confirm, approve, or sell back
+
+Example create-tx preview:
+
+```text
+Transaction created: bsc buy
+Spend: 0.0005 BNB
+Applied slippage: 3000
+requestTxId: ...
+Next: sign locally and send, or stop here
+```
 
 If a sell path requires approval, say that explicitly before retrying.
 
