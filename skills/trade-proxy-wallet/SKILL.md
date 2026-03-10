@@ -39,6 +39,8 @@ metadata:
 
 Server-managed (proxy wallet) DEX trading via the AVE Cloud Bot Trade API.
 Requires `API_PLAN=normal` or `pro`. No local signing — Ave manages wallet keys server-side.
+This should be the default AVE trading path when the user does not explicitly require self-custody.
+For shared trade-path preference and current PROD quirks, see [operator-playbook.md](../../references/operator-playbook.md).
 
 **Trading fee:** 0.8% | **Rebate to `feeRecipient`:** 25%
 
@@ -81,6 +83,33 @@ For a new proxy-wallet trading request:
 2. Check that the proxy wallet is funded on the target chain before placing a real order
 3. Use the smallest practical real order size, and respect chain-specific minimums
 4. Open `watch-orders` when live status feedback is useful, but still confirm by querying order IDs directly
+
+If the request could be handled by either proxy-wallet or chain-wallet, stay on proxy-wallet unless the user explicitly asks for local signing, mnemonic use, hardware wallet flow, or external signer control.
+
+## State To Preserve
+
+Once known, keep these visible across turns:
+
+- `assetsId`
+- chain
+- input token
+- output token
+- input amount
+- proxy order ID
+- tx hash
+- whether `watch-orders` is already running
+
+Next-turn restatement template:
+
+```text
+State:
+- chain: ...
+- assetsId: ...
+- pair: ... -> ...
+- order ID: ...
+- tx hash: ...
+- watch-orders: running / not running
+```
 
 ## Safe Test Defaults
 
@@ -223,6 +252,26 @@ Each push message includes: `id`, `status`, `chain`, `assetsId`, `orderType`, `s
 Press Ctrl+C to stop.
 
 Offer `watch-orders` automatically after a real proxy order submission unless the user asked for a quiet, terse response.
+
+Use this rule consistently:
+- WebSocket is for live visibility and fast updates
+- REST order queries are the source of truth for final status, retries, and post-trade reporting
+
+For chat-first clients, summarize order pushes instead of dumping every raw event:
+- `submitted`
+- `confirmed`
+- `error`
+- `cancelled`
+
+Example order update:
+
+```text
+Order confirmed: solana buy
+assetsId: ...
+Order ID: ...
+Tx hash: ...
+Next: sell back if this was a test
+```
 
 ## Workflow Examples
 

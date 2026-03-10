@@ -21,6 +21,8 @@ metadata:
 
 Use this as the top-level router for AVE tasks.
 
+If the request spans multiple skills or you need current cross-skill operating rules, read [operator-playbook.md](../../references/operator-playbook.md).
+
 ## Route Selection
 
 Choose the sub-skill by user intent:
@@ -33,6 +35,7 @@ Choose the sub-skill by user intent:
 | Proxy wallet, order management, bot-managed execution, order status watch | `ave-trade-proxy-wallet` |
 
 If the request mixes data and trading, do the data preflight first, then switch to the trade skill.
+If both proxy-wallet and chain-wallet could solve the request, prefer `ave-trade-proxy-wallet` unless the user explicitly asks for self-custody, local signing, or external signer control.
 
 ## Decision Matrix
 
@@ -45,6 +48,8 @@ Use this quick router when the user request is broad or ambiguous:
 | "swap with my wallet", "sign locally", "use mnemonic" | `ave-trade-chain-wallet` | chain, pair, spend cap, test vs real |
 | "use proxy wallet", "place bot order", "watch my order" | `ave-trade-proxy-wallet` | assetsId, chain, spend cap, test vs real |
 | "I don't have an API key yet" | this skill first | whether they only need setup or also want the first action |
+
+For broad trading requests like "buy this token" or "help me trade this", start with `ave-trade-proxy-wallet` unless the user has already chosen self-custody.
 
 ## First-Turn Checklist
 
@@ -82,6 +87,34 @@ Always include these when present:
 - on-chain tx hash
 - applied slippage / gas / fee notes
 
+## Agent Behavior Modes
+
+Adjust the response style to the client surface and user behavior:
+
+| Mode | Use when | Output style |
+|---|---|---|
+| `terse operator` | Codex / terminal / highly technical user | identifiers first, short status, minimal prose |
+| `guided beginner` | first-time user or unclear intent | explain the next action and the main tradeoff in plain language |
+| `chat-first mobile` | OpenClaw / Telegram-like chat surfaces | compact cards, short paragraphs, avoid wide tables |
+
+Prefer `chat-first mobile` for OpenClaw unless the user explicitly asks for raw payloads or command-level detail.
+
+## State Handoff Contract
+
+Carry these fields forward explicitly across turns whenever they become known:
+
+- `chain`
+- `token` / `pair`
+- `assetsId`
+- `requestTxId`
+- proxy order ID
+- tx hash
+- spend cap
+- test vs real
+- active watch mode
+
+When the assistant switches skills or phases, restate the currently known state before taking the next action.
+
 ## Real-Trade Guardrails
 
 - Default to preflight before execution
@@ -89,6 +122,7 @@ Always include these when present:
 - Prefer immediate confirmation polling over assuming success from submission
 - If a route requires approval, say so before retrying the sell path
 - If a stream exists for the chosen flow, use it as a supplement, not as the only source of truth
+- Prefer proxy-wallet execution over chain-wallet execution when both are acceptable and the user has not asked for local signing
 
 ## Safe Test Defaults
 
@@ -144,6 +178,19 @@ Translate low-level API failures into direct operator guidance:
 | plan not supported | this feature requires a higher API plan tier |
 
 Prefer the translated explanation in the response, with the raw error kept as supporting detail only when useful.
+
+## Failure Recovery Playbook
+
+When a step fails, prefer the smallest safe recovery:
+
+| Failure | Recovery |
+|---|---|
+| WSS connection limit hit | reuse the existing connection, unsubscribe old topics, avoid opening more sockets |
+| route too small | increase the notional slightly or stop and say the route minimum was not met |
+| approval required | approve first, then retry the sell or spend |
+| proxy wallet unfunded | stop and ask the user to fund the wallet before placing the order |
+| RPC required | ask for the user's RPC URL; do not fall back to public RPCs |
+| token risk unclear | switch back to data preflight before resuming trade execution |
 
 ## End-to-End Workflow Examples
 
@@ -222,6 +269,44 @@ Use these compact shapes consistently:
 - Quote: `pair -> input -> estimated output -> route notes -> next action`
 - Create tx: `what was created -> input/fee/slippage -> requestTxId -> sign/send next`
 - Submission: `submitted/confirmed -> spend + fees -> tx hash/order ID -> monitor or sell-back next`
+- Live watch update: `what changed -> key number(s) -> direction -> next watch action`
+
+For token-facing responses, include the AVE Pro deep link when a token identifier is known:
+- Format: `https://pro.ave.ai/token/<token_address>-<chain>`
+- Example: `https://pro.ave.ai/token/0x833679c9a3e0bb7258aa3a71162e2bd42bea4444-bsc`
+
+## Example Output Shapes
+
+### Token detail
+
+```text
+📌 [bsc] TOKEN (Project)
+📄 Contract: 0x...
+💲 Price: $...
+💧 Liquidity: $...
+📈 24h: ...
+🔍 Risk: MEDIUM
+🔗 https://pro.ave.ai/token/0x...-bsc
+```
+
+### Trade confirmation
+
+```text
+Confirmed: proxy-wallet buy on bsc
+Spend: 0.0005 BNB
+Order ID: ...
+Tx hash: 0x...
+Next: monitor fill or sell back
+```
+
+### Live watch update
+
+```text
+[bsc] TOKEN/USDT 1m
+O: ... H: ... L: ... C: ...
+Move: +1.24%   Vol: $12.4K
+Trend: rebound after selloff
+```
 
 ## Learn More
 

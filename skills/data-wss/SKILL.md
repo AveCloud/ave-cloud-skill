@@ -31,6 +31,7 @@ metadata:
 # ave-data-wss
 
 Real-time on-chain data streams via the AVE Cloud WebSocket API. Requires `API_PLAN=pro`.
+For shared connection discipline and cross-skill operating rules, see [operator-playbook.md](../../references/operator-playbook.md).
 
 ## Setup
 
@@ -50,20 +51,36 @@ docker build -f scripts/Dockerfile.txt -t ave-cloud .
 
 WebSocket streams require `API_PLAN=pro` (20 TPS).
 
+Connection discipline matters more than TPS:
+- Prefer one live connection with `subscribe` / `unsubscribe` over opening multiple parallel sockets
+- Treat 5 concurrent connections as the practical ceiling for a single operator session
+- If the user wants to watch multiple topics, reuse the same REPL or server connection when possible
+- Close or unsubscribe from old streams before opening more
+
 ## Supported Chains
 
 All chains available in the Data REST API are supported for WebSocket streams. Common: `bsc`, `eth`, `base`, `solana`, `tron`, `polygon`, `arbitrum`
 
 ## Operations
 
+## Chat Surface Rules
+
+For OpenClaw, Claude, and Codex chat surfaces:
+
+- prefer one active connection with multiple `subscribe` / `unsubscribe` operations
+- prefer short periodic summaries over forwarding every raw event
+- avoid wide raw JSON dumps unless the user explicitly asks for debugging detail
+- use Markdown-friendly cards or ASCII snapshots for kline updates
+- if the user is on a mobile/chat surface, keep each live update compact enough to scan in one screen
+
 ### Interactive REPL (recommended for live monitoring)
 
 ```bash
-# Docker
-docker run -it -e AVE_API_KEY="your_key" -e API_PLAN=pro ave-cloud wss-repl
-
-# Local
+# Preferred: local CLI with Docker-managed runtime
 python scripts/ave_data_wss.py wss-repl
+
+# Fallback: direct Docker invocation only when debugging runtime issues
+docker run -it -e AVE_API_KEY -e API_PLAN=pro ave-cloud wss-repl
 ```
 
 At the `>` prompt:
@@ -77,6 +94,13 @@ At the `>` prompt:
 | `quit` | Close connection and exit |
 
 JSON events stream to stdout; UI messages go to stderr (safe to pipe to `jq`).
+Prefer this REPL or the Docker server daemon for multi-topic monitoring, because it reuses one connection.
+
+For agent-driven sessions, prefer:
+1. open one REPL/server connection
+2. `subscribe` to the current topic
+3. `unsubscribe` before switching topics
+4. keep total concurrent connections under 5
 
 ### Stream live swap/liquidity events
 
@@ -110,6 +134,8 @@ python scripts/ave_data_wss.py stop-server    # stop it
 python scripts/ave_data_wss.py serve          # run in foreground (used as Docker entrypoint)
 ```
 
+Use the daemon when the assistant needs to maintain one reusable connection and swap subscriptions over time.
+
 ## Workflow Examples
 
 ### Monitor a new token launch
@@ -138,14 +164,26 @@ python scripts/ave_data_wss.py wss-repl
 # 1. Start persistent server
 python scripts/ave_data_wss.py start-server
 
-# 2. Stream kline updates (1-minute candles)
-python scripts/ave_data_wss.py watch-kline --address <pair_address> --chain bsc --interval k1
-
-# 2b. Stream formatted markdown output with ASCII mini-chart
+# 2. Reuse the same connection for one topic at a time
 python scripts/ave_data_wss.py watch-kline --address <pair_address> --chain bsc --interval k1 --format markdown
 
-# 3. When done, stop the server
+# 3. When you need a different topic, unsubscribe or switch in the REPL/server flow
+#    instead of opening another fresh connection
+
+# 4. When done, stop the server
 python scripts/ave_data_wss.py stop-server
+```
+
+### Agent-run monitoring sequence
+
+Use this sequence for OpenClaw, Claude, or Codex when the assistant is actively driving the monitoring flow:
+
+```text
+1. Start one reusable connection (REPL or server daemon)
+2. Subscribe to the current topic
+3. Summarize periodically instead of forwarding every event
+4. Unsubscribe before switching topics
+5. Stop the server or exit the REPL when monitoring is complete
 ```
 
 ## Live Kline Presentation
@@ -179,6 +217,21 @@ Guidelines:
 - Keep the ASCII chart narrow enough to render cleanly in Markdown
 - If a richer chart or image is available in the client, prefer that over ASCII
 - Prefer resolved token symbols in the header when pair metadata is available; otherwise abbreviate the pair address cleanly
+- Prefer reusing the same live connection and changing subscriptions rather than opening a fresh socket for each watch
+
+Recommended cadence:
+- active trading: summarize every 5 to 15 seconds
+- passive monitoring: summarize every 30 to 60 seconds
+- always suppress duplicate no-change updates unless the user asked for every tick
+
+Compact live update template:
+
+```text
+[bsc] TOKEN/USDT 1m
+O: 0.0000766  H: 0.0000781  L: 0.0000759  C: 0.0000774
+Move: +1.05%   Vol: $21.1K
+Trend: steady climb
+```
 
 ## Error Translation
 
