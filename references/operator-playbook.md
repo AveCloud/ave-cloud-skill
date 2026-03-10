@@ -22,6 +22,14 @@ Use this reference when the request spans multiple AVE skills or when the agent 
 - Claude: keep explanations clear, but still summarize raw payloads into user-facing decisions.
 - Codex: prefer terse operator output with identifiers and next actions first.
 
+### Client-Specific Defaults
+
+| Client | Default |
+|---|---|
+| OpenClaw | compact token card, concise live summary, avoid wide tables, prefer one-screen updates |
+| Claude | brief explanation plus decision, then identifiers and next action |
+| Codex | shortest path to action, IDs and command-relevant output first |
+
 ### Token Link Pattern
 
 When a token address and chain are known, include:

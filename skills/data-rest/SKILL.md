@@ -277,8 +277,9 @@ Presentation rules:
 - Shorten long addresses only when space is constrained; otherwise show the full contract on the main contract line
 - Use `0.0{n}1234` style formatting for very small prices when that improves readability
 - Add the AVE Pro token-detail link when the contract and chain are known: `https://pro.ave.ai/token/<contract_address>-<chain>`
-- If multiple chains or duplicate symbols exist, say that first, then show the top 3 to 5 candidate cards
+- If multiple chains or duplicate symbols exist, say that first and do not pretend one is correct unless contract, chain, liquidity, or exact-name match clearly makes it primary
 - If there is one obvious best match, show one full card and list the other candidates more compactly below it
+- If there is no obvious best match, show compact alternates only and ask the user to pick by chain or contract
 
 Compact English example:
 

@@ -1,7 +1,7 @@
 interface:
   display_name: "AVE Proxy Wallet Trading"
-  short_description: "Server-managed wallet trading with market/limit orders, TP/SL on AVE Cloud"
-  default_prompt: "Use $ave-trade-proxy-wallet to manage proxy wallets and place market or limit orders via AVE Cloud."
+  short_description: "Default AVE trading path for proxy wallets, orders, and live order monitoring"
+  default_prompt: "Use $ave-trade-proxy-wallet as the default AVE trading path when self-custody is not required, and use REST queries as the source of truth for final order status."
 
 policy:
   allow_implicit_invocation: false
