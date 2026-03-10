@@ -276,6 +276,16 @@ After every chain-wallet action, answer in this order:
 
 1. Outcome: quote created, tx created, tx submitted, or tx confirmed
 2. Spend and fee impact: input amount, gas / fee, and any server-applied slippage difference
+
+Example create-tx preview:
+
+```text
+Transaction created: bsc buy
+Spend: 0.0005 BNB
+Applied slippage: 3000
+requestTxId: ...
+Next: sign locally and send, or stop here
+```
 3. Identifiers: `requestTxId`, tx hash, and chain
 4. Next step: sign, send, confirm, approve, or sell back
 

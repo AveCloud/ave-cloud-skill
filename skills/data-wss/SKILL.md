@@ -212,6 +212,15 @@ Recommended cadence:
 - passive monitoring: summarize every 30 to 60 seconds
 - always suppress duplicate no-change updates unless the user asked for every tick
 
+Compact live update template:
+
+```text
+[bsc] TOKEN/USDT 1m
+O: 0.0000766  H: 0.0000781  L: 0.0000759  C: 0.0000774
+Move: +1.05%   Vol: $21.1K
+Trend: steady climb
+```
+
 ## Error Translation
 
 | Raw issue pattern | User-facing explanation |

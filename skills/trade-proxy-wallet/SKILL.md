@@ -247,6 +247,16 @@ For chat-first clients, summarize order pushes instead of dumping every raw even
 - `error`
 - `cancelled`
 
+Example order update:
+
+```text
+Order confirmed: solana buy
+assetsId: ...
+Order ID: ...
+Tx hash: ...
+Next: sell back if this was a test
+```
+
 ## Workflow Examples
 
 ### Full proxy wallet lifecycle (create → buy → monitor → sell → cleanup)

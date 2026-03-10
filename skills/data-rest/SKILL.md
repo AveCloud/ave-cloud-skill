@@ -280,6 +280,19 @@ Presentation rules:
 - If multiple chains or duplicate symbols exist, say that first, then show the top 3 to 5 candidate cards
 - If there is one obvious best match, show one full card and list the other candidates more compactly below it
 
+Compact English example:
+
+```text
+📌 [bsc] ECO (EcoVerse)
+📄 Contract: 0xae04...
+💲 Price: $0.0{4}766
+💰 MCap: $76.61K
+💧 Liquidity: $21.14K
+📈 15m: -12.14%, 24h: +130.85%
+🔍 Risk: HIGH
+🔗 https://pro.ave.ai/token/0xae04efc49367ee34c1acfe75c828a3023024174e-bsc
+```
+
 Desktop / API-style fallback:
 - Use a concise Markdown table first
 - Then show one highlighted card in the same field order when a primary result is clear
