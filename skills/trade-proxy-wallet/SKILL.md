@@ -85,6 +85,19 @@ For a new proxy-wallet trading request:
 
 If the request could be handled by either proxy-wallet or chain-wallet, stay on proxy-wallet unless the user explicitly asks for local signing, mnemonic use, hardware wallet flow, or external signer control.
 
+## State To Preserve
+
+Once known, keep these visible across turns:
+
+- `assetsId`
+- chain
+- input token
+- output token
+- input amount
+- proxy order ID
+- tx hash
+- whether `watch-orders` is already running
+
 ## Safe Test Defaults
 
 Use these defaults for first real tests unless the user provides stricter limits:
@@ -226,6 +239,12 @@ Each push message includes: `id`, `status`, `chain`, `assetsId`, `orderType`, `s
 Press Ctrl+C to stop.
 
 Offer `watch-orders` automatically after a real proxy order submission unless the user asked for a quiet, terse response.
+
+For chat-first clients, summarize order pushes instead of dumping every raw event:
+- `submitted`
+- `confirmed`
+- `error`
+- `cancelled`
 
 ## Workflow Examples
 

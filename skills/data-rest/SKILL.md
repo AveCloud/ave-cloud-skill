@@ -220,6 +220,11 @@ Present as: price table with 24h change, sorted by market cap.
 - **Risk report**: lead with risk level (LOW/MEDIUM/HIGH/CRITICAL), then key findings
 - **Search**: table with symbol, name, chain, address, price, 24h change
 
+For chat-first clients:
+- prefer one primary token card plus compact alternates
+- avoid wide tables unless the user explicitly asks for them
+- include the AVE Pro token link when the contract and chain are known
+
 ## Error Translation
 
 When the API response is vague, translate it into operator terms:

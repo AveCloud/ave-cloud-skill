@@ -85,6 +85,34 @@ Always include these when present:
 - on-chain tx hash
 - applied slippage / gas / fee notes
 
+## Agent Behavior Modes
+
+Adjust the response style to the client surface and user behavior:
+
+| Mode | Use when | Output style |
+|---|---|---|
+| `terse operator` | Codex / terminal / highly technical user | identifiers first, short status, minimal prose |
+| `guided beginner` | first-time user or unclear intent | explain the next action and the main tradeoff in plain language |
+| `chat-first mobile` | OpenClaw / Telegram-like chat surfaces | compact cards, short paragraphs, avoid wide tables |
+
+Prefer `chat-first mobile` for OpenClaw unless the user explicitly asks for raw payloads or command-level detail.
+
+## State Handoff Contract
+
+Carry these fields forward explicitly across turns whenever they become known:
+
+- `chain`
+- `token` / `pair`
+- `assetsId`
+- `requestTxId`
+- proxy order ID
+- tx hash
+- spend cap
+- test vs real
+- active watch mode
+
+When the assistant switches skills or phases, restate the currently known state before taking the next action.
+
 ## Real-Trade Guardrails
 
 - Default to preflight before execution
@@ -148,6 +176,19 @@ Translate low-level API failures into direct operator guidance:
 | plan not supported | this feature requires a higher API plan tier |
 
 Prefer the translated explanation in the response, with the raw error kept as supporting detail only when useful.
+
+## Failure Recovery Playbook
+
+When a step fails, prefer the smallest safe recovery:
+
+| Failure | Recovery |
+|---|---|
+| WSS connection limit hit | reuse the existing connection, unsubscribe old topics, avoid opening more sockets |
+| route too small | increase the notional slightly or stop and say the route minimum was not met |
+| approval required | approve first, then retry the sell or spend |
+| proxy wallet unfunded | stop and ask the user to fund the wallet before placing the order |
+| RPC required | ask for the user's RPC URL; do not fall back to public RPCs |
+| token risk unclear | switch back to data preflight before resuming trade execution |
 
 ## End-to-End Workflow Examples
 
@@ -226,6 +267,7 @@ Use these compact shapes consistently:
 - Quote: `pair -> input -> estimated output -> route notes -> next action`
 - Create tx: `what was created -> input/fee/slippage -> requestTxId -> sign/send next`
 - Submission: `submitted/confirmed -> spend + fees -> tx hash/order ID -> monitor or sell-back next`
+- Live watch update: `what changed -> key number(s) -> direction -> next watch action`
 
 For token-facing responses, include the AVE Pro deep link when a token identifier is known:
 - Format: `https://pro.ave.ai/token/<token_address>-<chain>`
