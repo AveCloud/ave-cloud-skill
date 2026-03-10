@@ -34,7 +34,7 @@ metadata:
 # ave-data-rest
 
 Query on-chain token data via the AVE Cloud Data REST API. Covers 130+ blockchains and 300+ DEXs.
-For shared token-link and agent operating rules, see [operator-playbook.md](/Users/wgx731/Code/ai/skill/references/operator-playbook.md).
+For shared token-link and agent operating rules, see [operator-playbook.md](../../references/operator-playbook.md).
 
 ## Setup
 
