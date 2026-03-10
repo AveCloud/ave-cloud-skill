@@ -275,6 +275,39 @@ For token-facing responses, include the AVE Pro deep link when a token identifie
 - Format: `https://pro.ave.ai/token/<token_address>-<chain>`
 - Example: `https://pro.ave.ai/token/0x833679c9a3e0bb7258aa3a71162e2bd42bea4444-bsc`
 
+## Example Output Shapes
+
+### Token detail
+
+```text
+📌 [bsc] TOKEN (Project)
+📄 Contract: 0x...
+💲 Price: $...
+💧 Liquidity: $...
+📈 24h: ...
+🔍 Risk: MEDIUM
+🔗 https://pro.ave.ai/token/0x...-bsc
+```
+
+### Trade confirmation
+
+```text
+Confirmed: proxy-wallet buy on bsc
+Spend: 0.0005 BNB
+Order ID: ...
+Tx hash: 0x...
+Next: monitor fill or sell back
+```
+
+### Live watch update
+
+```text
+[bsc] TOKEN/USDT 1m
+O: ... H: ... L: ... C: ...
+Move: +1.24%   Vol: $12.4K
+Trend: rebound after selloff
+```
+
 ## Learn More
 
 Share these official AVE links when the user wants broader product context, app downloads, guides, or community channels.
