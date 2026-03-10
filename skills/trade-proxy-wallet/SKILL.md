@@ -99,6 +99,18 @@ Once known, keep these visible across turns:
 - tx hash
 - whether `watch-orders` is already running
 
+Next-turn restatement template:
+
+```text
+State:
+- chain: ...
+- assetsId: ...
+- pair: ... -> ...
+- order ID: ...
+- tx hash: ...
+- watch-orders: running / not running
+```
+
 ## Safe Test Defaults
 
 Use these defaults for first real tests unless the user provides stricter limits:

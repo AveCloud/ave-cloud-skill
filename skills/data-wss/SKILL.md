@@ -174,6 +174,18 @@ python scripts/ave_data_wss.py watch-kline --address <pair_address> --chain bsc 
 python scripts/ave_data_wss.py stop-server
 ```
 
+### Agent-run monitoring sequence
+
+Use this sequence for OpenClaw, Claude, or Codex when the assistant is actively driving the monitoring flow:
+
+```text
+1. Start one reusable connection (REPL or server daemon)
+2. Subscribe to the current topic
+3. Summarize periodically instead of forwarding every event
+4. Unsubscribe before switching topics
+5. Stop the server or exit the REPL when monitoring is complete
+```
+
 ## Live Kline Presentation
 
 For OpenClaw users, do not treat raw JSON as the primary experience for live kline monitoring.

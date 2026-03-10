@@ -72,3 +72,12 @@ Carry these across turns when known:
 - spend cap
 - test vs real
 - active watch mode
+
+### Response Priority Order
+
+When reporting an action result, use this order unless the user explicitly wants raw payloads first:
+
+1. outcome
+2. spend / fees / slippage
+3. identifiers
+4. next action

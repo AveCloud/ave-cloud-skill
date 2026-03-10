@@ -110,6 +110,18 @@ Once known, keep these visible across turns:
 - RPC URL requirement status
 - whether the action is create-only, send-only, or full execution
 
+Next-turn restatement template:
+
+```text
+State:
+- chain: ...
+- pair: ... -> ...
+- spend cap: ...
+- requestTxId: ...
+- tx hash: ...
+- mode: create-only / send-only / full execution
+```
+
 ## Safe Test Defaults
 
 Use these defaults for first real tests unless the user gives stricter limits:
