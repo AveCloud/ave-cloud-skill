@@ -298,6 +298,28 @@ Desktop / API-style fallback:
 - Use a concise Markdown table first
 - Then show one highlighted card in the same field order when a primary result is clear
 
+Risk-only response template:
+
+```text
+Risk: HIGH
+Key findings:
+- hidden owner
+- holder concentration
+- unaudited contract
+Next: review liquidity and recent tx flow before trading
+```
+
+Holder summary template:
+
+```text
+Holders: 617
+Top concentration:
+- top 1: 13.7%
+- top 5 total: ...
+- top 10 total: ...
+Read: moderately concentrated / highly concentrated
+```
+
 ## Learn More
 
 - API docs: [cloud.ave.ai](https://cloud.ave.ai/)
