@@ -39,6 +39,7 @@ metadata:
 
 Server-managed (proxy wallet) DEX trading via the AVE Cloud Bot Trade API.
 Requires `API_PLAN=normal` or `pro`. No local signing — Ave manages wallet keys server-side.
+This should be the default AVE trading path when the user does not explicitly require self-custody.
 
 **Trading fee:** 0.8% | **Rebate to `feeRecipient`:** 25%
 
@@ -81,6 +82,8 @@ For a new proxy-wallet trading request:
 2. Check that the proxy wallet is funded on the target chain before placing a real order
 3. Use the smallest practical real order size, and respect chain-specific minimums
 4. Open `watch-orders` when live status feedback is useful, but still confirm by querying order IDs directly
+
+If the request could be handled by either proxy-wallet or chain-wallet, stay on proxy-wallet unless the user explicitly asks for local signing, mnemonic use, hardware wallet flow, or external signer control.
 
 ## Safe Test Defaults
 
