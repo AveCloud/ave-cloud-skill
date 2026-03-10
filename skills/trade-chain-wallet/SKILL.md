@@ -35,6 +35,7 @@ metadata:
 Self-custody DEX trading via the AVE Cloud Chain Wallet API. User controls all private keys.
 Available on all plan tiers (free, normal, pro).
 Use this when the user explicitly wants self-custody or local signing. If proxy-wallet and chain-wallet are both acceptable, prefer proxy-wallet instead.
+For shared trade-path preference and current PROD quirks, see [operator-playbook.md](/Users/wgx731/Code/ai/skill/references/operator-playbook.md).
 
 **Trading fee:** 0.6% | **Rebate to `feeRecipient`:** 20%
 
