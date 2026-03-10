@@ -21,7 +21,7 @@ metadata:
 
 Use this as the top-level router for AVE tasks.
 
-If the request spans multiple skills or you need current cross-skill operating rules, read [operator-playbook.md](/Users/wgx731/Code/ai/skill/references/operator-playbook.md).
+If the request spans multiple skills or you need current cross-skill operating rules, read [operator-playbook.md](../../references/operator-playbook.md).
 
 ## Route Selection
 

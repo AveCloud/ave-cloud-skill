@@ -35,7 +35,7 @@ metadata:
 Self-custody DEX trading via the AVE Cloud Chain Wallet API. User controls all private keys.
 Available on all plan tiers (free, normal, pro).
 Use this when the user explicitly wants self-custody or local signing. If proxy-wallet and chain-wallet are both acceptable, prefer proxy-wallet instead.
-For shared trade-path preference and current PROD quirks, see [operator-playbook.md](/Users/wgx731/Code/ai/skill/references/operator-playbook.md).
+For shared trade-path preference and current PROD quirks, see [operator-playbook.md](../../references/operator-playbook.md).
 
 **Trading fee:** 0.6% | **Rebate to `feeRecipient`:** 20%
 
@@ -288,6 +288,8 @@ After every chain-wallet action, answer in this order:
 
 1. Outcome: quote created, tx created, tx submitted, or tx confirmed
 2. Spend and fee impact: input amount, gas / fee, and any server-applied slippage difference
+3. Identifiers: `requestTxId`, tx hash, and chain
+4. Next step: sign, send, confirm, approve, or sell back
 
 Example create-tx preview:
 
@@ -298,8 +300,6 @@ Applied slippage: 3000
 requestTxId: ...
 Next: sign locally and send, or stop here
 ```
-3. Identifiers: `requestTxId`, tx hash, and chain
-4. Next step: sign, send, confirm, approve, or sell back
 
 If a sell path requires approval, say that explicitly before retrying.
 

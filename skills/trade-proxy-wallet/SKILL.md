@@ -40,7 +40,7 @@ metadata:
 Server-managed (proxy wallet) DEX trading via the AVE Cloud Bot Trade API.
 Requires `API_PLAN=normal` or `pro`. No local signing — Ave manages wallet keys server-side.
 This should be the default AVE trading path when the user does not explicitly require self-custody.
-For shared trade-path preference and current PROD quirks, see [operator-playbook.md](/Users/wgx731/Code/ai/skill/references/operator-playbook.md).
+For shared trade-path preference and current PROD quirks, see [operator-playbook.md](../../references/operator-playbook.md).
 
 **Trading fee:** 0.8% | **Rebate to `feeRecipient`:** 25%
 
