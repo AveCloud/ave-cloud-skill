@@ -95,6 +95,20 @@ If the user has not asked for self-custody and a proxy-wallet flow would work, r
 
 Prefer the low-level `create-*` and `send-*` flow when you need tighter control over gas, fees, or request IDs.
 
+## State To Preserve
+
+Once known, keep these visible across turns:
+
+- chain
+- input token
+- output token
+- input amount
+- spend cap
+- `requestTxId`
+- tx hash
+- RPC URL requirement status
+- whether the action is create-only, send-only, or full execution
+
 ## Safe Test Defaults
 
 Use these defaults for first real tests unless the user gives stricter limits:

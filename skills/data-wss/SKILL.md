@@ -62,6 +62,16 @@ All chains available in the Data REST API are supported for WebSocket streams. C
 
 ## Operations
 
+## Chat Surface Rules
+
+For OpenClaw, Claude, and Codex chat surfaces:
+
+- prefer one active connection with multiple `subscribe` / `unsubscribe` operations
+- prefer short periodic summaries over forwarding every raw event
+- avoid wide raw JSON dumps unless the user explicitly asks for debugging detail
+- use Markdown-friendly cards or ASCII snapshots for kline updates
+- if the user is on a mobile/chat surface, keep each live update compact enough to scan in one screen
+
 ### Interactive REPL (recommended for live monitoring)
 
 ```bash
@@ -84,6 +94,12 @@ At the `>` prompt:
 
 JSON events stream to stdout; UI messages go to stderr (safe to pipe to `jq`).
 Prefer this REPL or the Docker server daemon for multi-topic monitoring, because it reuses one connection.
+
+For agent-driven sessions, prefer:
+1. open one REPL/server connection
+2. `subscribe` to the current topic
+3. `unsubscribe` before switching topics
+4. keep total concurrent connections under 5
 
 ### Stream live swap/liquidity events
 
@@ -189,6 +205,11 @@ Guidelines:
 - If a richer chart or image is available in the client, prefer that over ASCII
 - Prefer resolved token symbols in the header when pair metadata is available; otherwise abbreviate the pair address cleanly
 - Prefer reusing the same live connection and changing subscriptions rather than opening a fresh socket for each watch
+
+Recommended cadence:
+- active trading: summarize every 5 to 15 seconds
+- passive monitoring: summarize every 30 to 60 seconds
+- always suppress duplicate no-change updates unless the user asked for every tick
 
 ## Error Translation
 
