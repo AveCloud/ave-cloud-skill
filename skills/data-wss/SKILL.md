@@ -76,11 +76,11 @@ For OpenClaw, Claude, and Codex chat surfaces:
 ### Interactive REPL (recommended for live monitoring)
 
 ```bash
-# Docker
-docker run -it -e AVE_API_KEY="your_key" -e API_PLAN=pro ave-cloud wss-repl
-
-# Local
+# Preferred: local CLI with Docker-managed runtime
 python scripts/ave_data_wss.py wss-repl
+
+# Fallback: direct Docker invocation only when debugging runtime issues
+docker run -it -e AVE_API_KEY -e API_PLAN=pro ave-cloud wss-repl
 ```
 
 At the `>` prompt:
@@ -164,13 +164,13 @@ python scripts/ave_data_wss.py wss-repl
 # 1. Start persistent server
 python scripts/ave_data_wss.py start-server
 
-# 2. Stream kline updates (1-minute candles)
-python scripts/ave_data_wss.py watch-kline --address <pair_address> --chain bsc --interval k1
-
-# 2b. Stream formatted markdown output with ASCII mini-chart
+# 2. Reuse the same connection for one topic at a time
 python scripts/ave_data_wss.py watch-kline --address <pair_address> --chain bsc --interval k1 --format markdown
 
-# 3. When done, stop the server
+# 3. When you need a different topic, unsubscribe or switch in the REPL/server flow
+#    instead of opening another fresh connection
+
+# 4. When done, stop the server
 python scripts/ave_data_wss.py stop-server
 ```
 

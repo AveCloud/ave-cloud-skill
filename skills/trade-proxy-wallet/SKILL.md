@@ -241,6 +241,10 @@ Press Ctrl+C to stop.
 
 Offer `watch-orders` automatically after a real proxy order submission unless the user asked for a quiet, terse response.
 
+Use this rule consistently:
+- WebSocket is for live visibility and fast updates
+- REST order queries are the source of truth for final status, retries, and post-trade reporting
+
 For chat-first clients, summarize order pushes instead of dumping every raw event:
 - `submitted`
 - `confirmed`

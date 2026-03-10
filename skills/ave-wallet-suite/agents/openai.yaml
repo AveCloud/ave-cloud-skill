@@ -1,7 +1,7 @@
 interface:
   display_name: "AVE Wallet Suite"
-  short_description: "Route AVE data, wallet, and trading flows"
-  default_prompt: "Use $ave-wallet-suite to route this AVE request and guide the next action."
+  short_description: "Route AVE data, monitoring, and trading flows with proxy-wallet-first defaults"
+  default_prompt: "Use $ave-wallet-suite to route this AVE request, prefer proxy-wallet over chain-wallet unless self-custody is explicit, and guide the next best action."
 
 policy:
   allow_implicit_invocation: true

@@ -1,7 +1,7 @@
 interface:
   display_name: "AVE Data REST"
-  short_description: "Search tokens, prices, klines, holders, risk reports via AVE Cloud REST API"
-  default_prompt: "Use $ave-data-rest to query on-chain token data from the AVE Cloud Data API."
+  short_description: "Search tokens, prices, holders, risk, and token details with AVE Pro links"
+  default_prompt: "Use $ave-data-rest to query AVE token data, present chat-friendly token cards, and include the pro.ave.ai token link when the contract and chain are known."
 
 policy:
   allow_implicit_invocation: true
