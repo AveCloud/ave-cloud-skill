@@ -31,6 +31,7 @@ metadata:
 # ave-data-wss
 
 Real-time on-chain data streams via the AVE Cloud WebSocket API. Requires `API_PLAN=pro`.
+For shared connection discipline and cross-skill operating rules, see [operator-playbook.md](/Users/wgx731/Code/ai/skill/references/operator-playbook.md).
 
 ## Setup
 
