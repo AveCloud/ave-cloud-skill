@@ -50,6 +50,12 @@ docker build -f scripts/Dockerfile.txt -t ave-cloud .
 
 WebSocket streams require `API_PLAN=pro` (20 TPS).
 
+Connection discipline matters more than TPS:
+- Prefer one live connection with `subscribe` / `unsubscribe` over opening multiple parallel sockets
+- Treat 5 concurrent connections as the practical ceiling for a single operator session
+- If the user wants to watch multiple topics, reuse the same REPL or server connection when possible
+- Close or unsubscribe from old streams before opening more
+
 ## Supported Chains
 
 All chains available in the Data REST API are supported for WebSocket streams. Common: `bsc`, `eth`, `base`, `solana`, `tron`, `polygon`, `arbitrum`
@@ -77,6 +83,7 @@ At the `>` prompt:
 | `quit` | Close connection and exit |
 
 JSON events stream to stdout; UI messages go to stderr (safe to pipe to `jq`).
+Prefer this REPL or the Docker server daemon for multi-topic monitoring, because it reuses one connection.
 
 ### Stream live swap/liquidity events
 
@@ -109,6 +116,8 @@ python scripts/ave_data_wss.py start-server   # start background Docker containe
 python scripts/ave_data_wss.py stop-server    # stop it
 python scripts/ave_data_wss.py serve          # run in foreground (used as Docker entrypoint)
 ```
+
+Use the daemon when the assistant needs to maintain one reusable connection and swap subscriptions over time.
 
 ## Workflow Examples
 
@@ -179,6 +188,7 @@ Guidelines:
 - Keep the ASCII chart narrow enough to render cleanly in Markdown
 - If a richer chart or image is available in the client, prefer that over ASCII
 - Prefer resolved token symbols in the header when pair metadata is available; otherwise abbreviate the pair address cleanly
+- Prefer reusing the same live connection and changing subscriptions rather than opening a fresh socket for each watch
 
 ## Error Translation
 

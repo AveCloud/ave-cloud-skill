@@ -34,6 +34,7 @@ metadata:
 
 Self-custody DEX trading via the AVE Cloud Chain Wallet API. User controls all private keys.
 Available on all plan tiers (free, normal, pro).
+Use this when the user explicitly wants self-custody or local signing. If proxy-wallet and chain-wallet are both acceptable, prefer proxy-wallet instead.
 
 **Trading fee:** 0.6% | **Rebate to `feeRecipient`:** 20%
 
@@ -89,6 +90,8 @@ For a new chain-wallet trading request:
 2. For real trades, confirm the spend cap and prefer a create-only preflight first
 3. For unfamiliar tokens, pair the trade flow with a risk or liquidity sanity check before execution
 4. For EVM `swap-evm`, require a user RPC node via `--rpc-url` or `AVE_<CHAIN>_RPC_URL`
+
+If the user has not asked for self-custody and a proxy-wallet flow would work, route back to `ave-trade-proxy-wallet` instead of continuing here.
 
 Prefer the low-level `create-*` and `send-*` flow when you need tighter control over gas, fees, or request IDs.
 
