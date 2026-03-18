@@ -1,0 +1,22 @@
+{
+  "name": "ave-cloud-skill",
+  "description": "AVE Cloud skills for token data, live streams, self-custody trading, and proxy-wallet trading",
+  "version": "2.1.0",
+  "author": {
+    "name": "Ave.ai"
+  },
+  "homepage": "https://cloud.ave.ai",
+  "repository": "https://github.com/AveCloud/ave-cloud-skill",
+  "license": "MIT",
+  "keywords": [
+    "ave",
+    "crypto",
+    "defi",
+    "trading",
+    "wallet",
+    "streaming",
+    "market",
+    "blockchain"
+  ],
+  "skills": ["./skills/"]
+}
