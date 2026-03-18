@@ -1,0 +1,45 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "ave-cloud-skill",
+  "description": "AVE Cloud skills for token data, live market streams, self-custody trading, and proxy-wallet trading across BSC, Solana, ETH, and Base",
+  "owner": {
+    "name": "Ave.ai"
+  },
+  "plugins": [
+    {
+      "name": "ave-cloud-skill",
+      "source": "./",
+      "description": "4 AVE skills for on-chain data, WebSocket streams, chain-wallet trading, and proxy-wallet trading",
+      "version": "2.1.0",
+      "author": {
+        "name": "Ave.ai"
+      },
+      "homepage": "https://cloud.ave.ai",
+      "repository": "https://github.com/AveCloud/ave-cloud-skill",
+      "license": "MIT",
+      "keywords": [
+        "ave",
+        "crypto",
+        "solana",
+        "bsc",
+        "defi",
+        "trading",
+        "wallet",
+        "market",
+        "blockchain",
+        "skills"
+      ],
+      "category": "web3",
+      "tags": [
+        "skills",
+        "data",
+        "streaming",
+        "trading",
+        "wallet",
+        "defi",
+        "blockchain"
+      ],
+      "strict": false
+    }
+  ]
+}
