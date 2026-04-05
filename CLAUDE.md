@@ -57,3 +57,19 @@ skills/
 | `AVE_BSC_RPC_URL` | trade-chain-wallet (optional) | Override BSC JSON-RPC URL (default: https://bsc.publicnode.com) |
 | `AVE_ETH_RPC_URL` | trade-chain-wallet (optional) | Override ETH JSON-RPC URL (default: https://ethereum.publicnode.com) |
 | `AVE_BASE_RPC_URL` | trade-chain-wallet (optional) | Override Base JSON-RPC URL (default: https://base.publicnode.com) |
+
+## Quick Decision Guide
+
+| User Intent | Route To |
+|---|---|
+| Token search, price, kline, holders, risk | `ave-data-rest` |
+| Live streams, WebSocket monitoring | `ave-data-wss` |
+| Buy/sell orders, TP/SL, proxy wallet | `ave-trade-proxy-wallet` |
+| Self-custody signing, local keys | `ave-trade-chain-wallet` |
+| Ambiguous request | `ave-wallet-suite` |
+
+See AGENTS.md for full routing logic and safety rules.
+
+## Bilingual Doc Sync Rule
+
+When modifying any public-facing doc, update its zh-CN peer file to keep content equivalent.
