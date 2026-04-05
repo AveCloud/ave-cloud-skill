@@ -1,6 +1,6 @@
 ---
 name: ave-wallet-suite
-version: 2.0.0
+version: 2.2.0
 description: |
   Route broad wallet, market-data, and trading requests across the AVE skill suite.
   Use this skill when the user asks for an AVE wallet/trading/data task but the correct sub-skill
