@@ -1,6 +1,6 @@
 {
   "name": "ave-cloud-skill",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "AVE Cloud skills for on-chain data, live streams, self-custody trading, and proxy-wallet trading",
   "author": {
     "name": "Ave.ai",

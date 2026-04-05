@@ -1,27 +1,15 @@
 ---
 name: ave-trade-proxy-wallet
-version: 2.1.0
+version: 2.2.0
 description: |
-  Execute server-managed (proxy wallet) DEX trades via the AVE Cloud Bot Trade API (https://bot-api.ave.ai).
-  Use this skill whenever the user wants to:
-  - Place a market (immediate) swap order via a proxy wallet
-  - Place a limit order that triggers when a token hits a target price
-  - Set take-profit or stop-loss rules on a market order (auto-sell)
-  - Set a trailing take-profit rule on a market order
-  - List, create, or delete proxy (bot) wallets
-  - Cancel pending limit orders
-  - Approve a token for trading on EVM chains (proxy wallet)
-  - Check token approval status
-  - Transfer tokens from a delegate proxy wallet
-  - Query market order or limit order history
-  - Watch real-time order status updates via WebSocket push
+  Execute server-managed proxy-wallet DEX trades via the AVE Cloud Bot Trade API.
+  Use this skill for proxy-wallet market and limit orders, TP/SL or trailing exits,
+  proxy wallet lifecycle actions, EVM token approvals, delegate transfers, order-history
+  queries, and live order-status watching over WebSocket.
 
-  Requires API_PLAN=normal or pro. Proxy wallets are server-managed by Ave — no local signing required.
+  Requires API_PLAN=normal or pro. Proxy wallets are managed by Ave; no local signing.
 
-  DO NOT use this skill for:
-  - Self-custody trading where the user holds private keys → use ave-trade-chain-wallet instead
-  - On-chain data queries → use ave-data-rest instead
-  - Real-time price/tx/kline streams → use ave-data-wss instead
+  Do not use this skill for self-custody trading, on-chain data queries, or price/tx/kline streams.
 license: MIT
 metadata:
   openclaw:
