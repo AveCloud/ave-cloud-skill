@@ -230,15 +230,7 @@ check_credential_leak() {
   local file
   local credential_hits=""
   local pattern='(^|[[:space:]])(export[[:space:]]+)?AVE_[A-Z0-9_]*(API|SECRET|ACCESS|PRIVATE|TOKEN|KEY)[A-Z0-9_]*[[:space:]]*[:=][[:space:]]*["'"'"'"'"'"'"'"'"'][A-Za-z0-9]{20,}["'"'"'"'"'"'"'"'"']'
-  local -a files=()
-
-  while IFS= read -r file; do
-    files+=("$file")
-  done < <(find . -path './.git' -prune -o -type f -print | sort)
-
-  if ((${#files[@]} > 0)); then
-    credential_hits="$(grep -nE -I "$pattern" "${files[@]}" || true)"
-  fi
+  credential_hits="$(find . -path './.git' -prune -o -type f -print0 | xargs -0 grep -nE -I "$pattern" || true)"
 
   if [[ -n "$credential_hits" ]]; then
     printf '  Potential credential leak(s) found:\n'

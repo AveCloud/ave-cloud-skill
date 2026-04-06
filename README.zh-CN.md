@@ -74,8 +74,7 @@ docker run --rm \
 | OpenCode | clone + symlink | .opencode/ |
 | OpenClaw | clone + symlink | .openclaw/ |
 
-本仓库当前包含 `.claude-plugin/`、`.codex/`、`.cursor-plugin/` 和 `.opencode/`。
-如果你维护对应的 `.openclaw/` 目录，可以沿用同样的 clone + symlink 方式。
+请参考各配置目录中的安装说明。
 
 ### API Plan 矩阵
 
