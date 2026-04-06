@@ -16,6 +16,7 @@ description: |
   Available on all plan tiers (free, normal, pro). User private keys never leave the local machine.
 
   DO NOT use this skill for:
+  - Generic buy/sell/swap/limit order requests without explicit self-custody language → use ave-trade-proxy-wallet instead
   - Server-managed (proxy) wallet trading → use ave-trade-proxy-wallet instead
   - On-chain data queries → use ave-data-rest instead
   - Real-time streams → use ave-data-wss instead
@@ -32,34 +33,31 @@ metadata:
 
 # ave-trade-chain-wallet
 
-Self-custody DEX trading via the AVE Cloud Chain Wallet API. User controls all private keys.
-Available on all plan tiers (free, normal, pro).
-Use this when the user explicitly wants self-custody or local signing. If proxy-wallet and chain-wallet are both acceptable, prefer proxy-wallet instead.
-For shared trade-path preference and current PROD quirks, see [operator-playbook.md](../../references/operator-playbook.md).
+Self-custody DEX trading via the AVE Cloud Chain Wallet API. Use this only when the user explicitly wants local signing, private-key or mnemonic control, or an external signer workflow. For shared trade-path rules and current PROD quirks, see [operator-playbook.md](../../references/operator-playbook.md).
 
 **Trading fee:** 0.6% | **Rebate to `feeRecipient`:** 20%
 
-Observed PROD caveats on 2026-03-09:
-- EVM `--fee-recipient` should be paired with `--fee-recipient-rate`; unpaired `feeRecipient` produced misleading `feeRecipientRate` errors in PROD probes.
-- Solana `--fee-recipient` should be paired with `--fee-recipient-rate`; unpaired `feeRecipient` returned a `feeRecipientRate` error in PROD.
-- Create responses may apply a different `slippage` value than the requested one; report the applied value instead of assuming an echo.
+## Route Cues
+
+| EN | ZH |
+|---|---|
+| "use my private key", "sign with my key" | "用我的私钥", "用私钥签名" |
+| "use my mnemonic", "use my seed phrase" | "用我的助记词", "用种子短语" |
+| "sign locally", "self-custody" | "本地签名", "自托管" |
+| "use my own wallet" | "用我自己的钱包" |
+| "build an unsigned tx", "external signer" | "构建未签名交易", "外部签名" |
 
 ## Setup
 
 ```bash
 export AVE_API_KEY="your_api_key_here"
 export API_PLAN="free"   # free | normal | pro
-
-# For automatic signing (optional — required for swap-evm / swap-solana):
-export AVE_EVM_PRIVATE_KEY="0x..."         # hex private key for BSC/ETH/Base
-export AVE_SOLANA_PRIVATE_KEY="base58..."  # base58 private key for Solana
-# OR use a BIP39 mnemonic for all chains (individual key takes priority):
-export AVE_MNEMONIC="word1 word2 ... word12"
-
-pip install -r scripts/requirements.txt
+export AVE_EVM_PRIVATE_KEY="0x..."         # optional for EVM signed send
+export AVE_SOLANA_PRIVATE_KEY="base58..."  # optional for Solana signed send
+export AVE_MNEMONIC="word1 word2 ... word12"  # optional fallback
 ```
 
-Get an API key at https://cloud.ave.ai/register.
+Get a key at https://cloud.ave.ai/register. EVM signed sends also require `--rpc-url` or `AVE_BSC_RPC_URL` / `AVE_ETH_RPC_URL` / `AVE_BASE_RPC_URL`.
 
 ## Rate Limits
 
@@ -71,296 +69,88 @@ Get an API key at https://cloud.ave.ai/register.
 
 ## Supported Chains
 
-EVM: `bsc`, `eth`, `base`
-Solana: `solana`
+`bsc`, `eth`, `base`, `solana`
 
-## Token And Address Conventions
-
-- EVM native token input uses `0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee`
-- Solana native token input uses `sol`
-- Pair `feeRecipient` with `feeRecipientRate` on both EVM and Solana if you set either
-- Do not lowercase Solana addresses
-- For EVM, preserve the user-provided address in output, but normalize only when an endpoint explicitly requires it
-- Treat wrapped/native distinctions carefully in explanations: `WBNB` is a token, `BNB` is the native coin
-
-## First-Turn Playbook
-
-For a new chain-wallet trading request:
-
-1. Identify whether the user wants a quote, unsigned transaction, signed send, or a full buy/sell test cycle
-2. For real trades, confirm the spend cap and prefer a create-only preflight first
-3. For unfamiliar tokens, pair the trade flow with a risk or liquidity sanity check before execution
-4. For EVM `swap-evm`, require a user RPC node via `--rpc-url` or `AVE_<CHAIN>_RPC_URL`
-
-If the user has not asked for self-custody and a proxy-wallet flow would work, route back to `ave-trade-proxy-wallet` instead of continuing here.
-
-Prefer the low-level `create-*` and `send-*` flow when you need tighter control over gas, fees, or request IDs.
-
-## State To Preserve
-
-Once known, keep these visible across turns:
-
-- chain
-- input token
-- output token
-- input amount
-- spend cap
-- `requestTxId`
-- tx hash
-- RPC URL requirement status
-- whether the action is create-only, send-only, or full execution
-
-Next-turn restatement template:
-
-```text
-State:
-- chain: ...
-- pair: ... -> ...
-- spend cap: ...
-- requestTxId: ...
-- tx hash: ...
-- mode: create-only / send-only / full execution
-```
-
-## Safe Test Defaults
-
-Use these defaults for first real tests unless the user gives stricter limits:
-
-- BSC buy test: `0.0005 BNB`
-- BSC gas cap: `0.0003 BNB`
-- Solana buy test: `0.0005 SOL`
-- Solana total priority-fee cap: `0.0005 SOL`
-
-Abort or fall back to create-only preview if the route exceeds those caps.
+Preview or create first, then submit only after the path is valid and the user has confirmed execution.
 
 ## Operations
 
-### Get swap quote
+### Quote
+
+Get estimated output before building or sending anything.
 
 ```bash
-python scripts/ave_trade_rest.py quote \
-  --chain bsc \
-  --in-amount 10000000 \
-  --in-token 0x55d398326f99059fF775485246999027B3197955 \
-  --out-token 0x2170Ed0880ac9A755fd29B2688956BD959F933F8 \
-  --swap-type buy
+python scripts/ave_trade_rest.py quote --chain <chain> --in-amount <amount> --in-token <token> --out-token <token> --swap-type buy|sell
 ```
 
-### High-level: swap EVM (create + sign + send)
+### Swap EVM
 
-Requires `AVE_EVM_PRIVATE_KEY` or `AVE_MNEMONIC`, plus a user-provided RPC node via `--rpc-url` or `AVE_BSC_RPC_URL` / `AVE_ETH_RPC_URL` / `AVE_BASE_RPC_URL`.
-The CLI uses that RPC only for local signing metadata (nonce, gas price, gas estimate) and submits the signed transaction through Ave's `sendSignedEvmTx` API.
+Create, sign, and send an EVM swap locally with a key or mnemonic.
 
 ```bash
-python scripts/ave_trade_rest.py swap-evm \
-  --chain bsc \
-  --rpc-url https://your-bsc-rpc.example \
-  --in-amount 1000000000000000000 \
-  --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee \
-  --out-token 0xb4357054c3da8d46ed642383f03139ac7f090343 \
-  --swap-type buy \
-  --slippage 500 \
-  [--auto-slippage] \
-  [--use-mev] \
-  [--fee-recipient 0x...] \
-  [--fee-recipient-rate 50]
+python scripts/ave_trade_rest.py swap-evm --chain bsc --rpc-url https://... --in-amount <amount> --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee --out-token <token> --swap-type buy --slippage 500 [--auto-slippage] [--use-mev]
 ```
 
-### High-level: swap Solana (create + sign + send)
+### Swap Solana
 
-Requires `AVE_SOLANA_PRIVATE_KEY` or `AVE_MNEMONIC`.
+Create, sign, and send a Solana swap locally with a key or mnemonic.
 
 ```bash
-python scripts/ave_trade_rest.py swap-solana \
-  --in-amount 1000000 \
-  --in-token sol \
-  --out-token 4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R \
-  --swap-type buy \
-  --slippage 500 \
-  --fee 50000000 \
-  [--auto-slippage] \
-  [--use-mev] \
-  [--fee-recipient ...] \
-  [--fee-recipient-rate 100]
+python scripts/ave_trade_rest.py swap-solana --in-amount <amount> --in-token sol --out-token <token> --swap-type buy --slippage 500 --fee 50000000 [--auto-slippage] [--use-mev]
 ```
 
-### Low-level: create EVM transaction (external signer workflow)
+### Create EVM tx
+
+Build an unsigned EVM swap transaction for an external signer.
 
 ```bash
-python scripts/ave_trade_rest.py create-evm-tx \
-  --chain bsc \
-  --creator-address 0x... \
-  --in-amount 1000000 \
-  --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee \
-  --out-token 0xb4357... \
-  --swap-type buy \
-  --slippage 500
+python scripts/ave_trade_rest.py create-evm-tx --chain bsc --creator-address 0x... --in-amount <amount> --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee --out-token <token> --swap-type buy --slippage 500
 ```
 
-Returns `requestTxId` and `txContent` for external signing.
+### Send EVM tx
 
-### Low-level: send signed EVM transaction
+Submit a pre-signed EVM transaction returned from `create-evm-tx`.
 
 ```bash
-python scripts/ave_trade_rest.py send-evm-tx \
-  --chain bsc \
-  --request-tx-id 123456789 \
-  --signed-tx 0xd6af... \
-  [--use-mev]
+python scripts/ave_trade_rest.py send-evm-tx --chain bsc --request-tx-id <id> --signed-tx 0x...
 ```
 
-### Low-level: create Solana transaction (external signer workflow)
+### Create Solana tx
+
+Build an unsigned Solana swap transaction for an external signer.
 
 ```bash
-python scripts/ave_trade_rest.py create-solana-tx \
-  --creator-address EgsEi74... \
-  --in-amount 1000000 \
-  --in-token sol \
-  --out-token 4k3Dyjz... \
-  --swap-type buy \
-  --slippage 500 \
-  --fee 50000000
+python scripts/ave_trade_rest.py create-solana-tx --creator-address <wallet> --in-amount <amount> --in-token sol --out-token <token> --swap-type buy --slippage 500 --fee 50000000
 ```
 
-Returns `requestTxId` and `txContent` (base64 message) for external signing.
+### Send Solana tx
 
-### Low-level: send signed Solana transaction
+Submit a pre-signed Solana transaction returned from `create-solana-tx`.
 
 ```bash
-python scripts/ave_trade_rest.py send-solana-tx \
-  --request-tx-id ddee4ce0... \
-  --signed-tx ATINUByp... \
-  [--use-mev]
+python scripts/ave_trade_rest.py send-solana-tx --request-tx-id <id> --signed-tx <signed_tx>
 ```
 
-## Workflow Examples
+## Workflow Example
 
-### Safe first buy test on BSC
+### External signer EVM flow
+
+Preview first, then build the unsigned transaction, then submit the signed payload.
 
 ```bash
-# 1. Get a quote first (no keys needed)
-python scripts/ave_trade_rest.py quote --chain bsc \
-  --in-amount 500000000000000 \
-  --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee \
-  --out-token 0xb4357054c3da8d46ed642383f03139ac7f090343 \
-  --swap-type buy
-# → Check estimated output and route. If acceptable, proceed.
-
-# 2. Execute the swap (0.0005 BNB)
-python scripts/ave_trade_rest.py swap-evm --chain bsc \
-  --rpc-url https://bsc-dataseed.binance.org \
-  --in-amount 500000000000000 \
-  --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee \
-  --out-token 0xb4357054c3da8d46ed642383f03139ac7f090343 \
-  --swap-type buy --slippage 500 --auto-slippage --use-mev
-# → Report: tx hash, spend, gas, applied slippage
-
-# 3. Sell back immediately
-python scripts/ave_trade_rest.py swap-evm --chain bsc \
-  --rpc-url https://bsc-dataseed.binance.org \
-  --in-amount <received_amount_in_wei> \
-  --in-token 0xb4357054c3da8d46ed642383f03139ac7f090343 \
-  --out-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee \
-  --swap-type sell --slippage 500 --auto-slippage --use-mev
+python scripts/ave_trade_rest.py quote --chain bsc --in-amount 500000000000000 --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee --out-token 0xb4357054c3da8d46ed642383f03139ac7f090343 --swap-type buy
+python scripts/ave_trade_rest.py create-evm-tx --chain bsc --creator-address 0x... --in-amount 500000000000000 --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee --out-token 0xb4357054c3da8d46ed642383f03139ac7f090343 --swap-type buy --slippage 500
+python scripts/ave_trade_rest.py send-evm-tx --chain bsc --request-tx-id <id> --signed-tx 0x...
 ```
-
-### External signer workflow (create → sign externally → send)
-
-```bash
-# 1. Create unsigned transaction
-python scripts/ave_trade_rest.py create-evm-tx --chain bsc \
-  --creator-address 0xYourWallet... \
-  --in-amount 500000000000000 \
-  --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee \
-  --out-token 0xb435... --swap-type buy --slippage 500
-# → Returns requestTxId and txContent (to, data, value)
-
-# 2. User signs externally (hardware wallet, multisig, etc.)
-
-# 3. Submit the signed transaction
-python scripts/ave_trade_rest.py send-evm-tx --chain bsc \
-  --request-tx-id <requestTxId> --signed-tx 0x<hex_signed_tx> --use-mev
-```
-
-## Response Contract
-
-After every chain-wallet action, answer in this order:
-
-1. Outcome: quote created, tx created, tx submitted, or tx confirmed
-2. Spend and fee impact: input amount, gas / fee, and any server-applied slippage difference
-3. Identifiers: `requestTxId`, tx hash, and chain
-4. Next step: sign, send, confirm, approve, or sell back
-
-Example create-tx preview:
-
-```text
-Transaction created: bsc buy
-Spend: 0.0005 BNB
-Applied slippage: 3000
-requestTxId: ...
-Next: sign locally and send, or stop here
-```
-
-If a sell path requires approval, say that explicitly before retrying.
-
-## Error Translation
-
-Map common failures into clear next actions:
-
-| Raw issue pattern | User-facing explanation |
-|---|---|
-| missing API key / auth failed | credentials are missing or invalid; check `AVE_API_KEY` |
-| `Invalid parameter: feeRecipientRate` with only `feeRecipient` set | pair `feeRecipient` with `feeRecipientRate`, or remove both |
-| missing signing envs | set `AVE_MNEMONIC` or the per-chain private key env |
-| RPC required for `swap-evm` | provide `--rpc-url` or set the chain-specific RPC env |
-| RPC connection refused / timeout | the RPC endpoint is unreachable; try a different RPC URL |
-| insufficient token balance / insufficient gas | fund the wallet with the spend token or native gas token |
-| approval required | approve the token first, then retry the sell |
-| transaction reverted / execution failed | the on-chain tx failed; check slippage, gas, or token tax |
-| route too small / min notional failure | the trade size is below the route minimum; increase size slightly |
-| HTTP 200 with JSON error status | treat it as a failed API call, not a success |
-| `gasLimit` returned as 0 | the CLI auto-estimates gas with 1.3x buffer; if it still fails, increase gas manually |
-
-Prefer the translated explanation first, then include the raw API message if it helps debugging.
-
-## Response Templates
-
-- Quote:
-  `Quote ready: <input token/amount> -> <estimated output>. Notes: <route/slippage>. Next: create tx or adjust size.`
-- Create tx:
-  `Transaction created: <chain> <swap type>. Spend: <input>, applied slippage: <value>, requestTxId: <id>. Next: sign locally and send.`
-- Send / confirm:
-  `Transaction submitted: <tx hash>. Spend: <input>, fee/gas: <value>. Next: confirm receipt or prepare sell-back.`
-
-## Trading Parameter Reference
-
-| Parameter | Type | Description |
-|---|---|---|
-| `--slippage` | integer (bps) | Max slippage tolerance. `500` = 5%, `1000` = 10%. Required on all create/swap commands |
-| `--auto-slippage` | flag | Let the API auto-adjust slippage based on token volatility. Overrides `--slippage` value |
-| `--use-mev` | flag | Enable MEV protection (front-running bundling). Recommended for large trades |
-| `--fee` | integer (lamports) | Solana priority fee. `50000000` = 0.05 SOL. Required on Solana create/swap commands |
-| `--fee-recipient` | address | Wallet address to receive trading fee rebate. Must be paired with `--fee-recipient-rate` |
-| `--fee-recipient-rate` | integer (bps) | Rebate ratio, max 1000 (10%). E.g. `100` = 1% rebate. Must be paired with `--fee-recipient` |
-| `--rpc-url` | URL | EVM JSON-RPC endpoint for local signing (nonce, gas estimate). Required for `swap-evm` |
-
-**Units:**
-- EVM amounts: wei (1 BNB = 10^18 wei, 1 USDT on BSC = 10^18 wei)
-- Solana amounts: lamports (1 SOL = 10^9 lamports)
-- Slippage/rates: basis points (1 bps = 0.01%)
-
-## Signing Details
-
-- **EVM**: uses `eth-account`; BIP44 path `m/44'/60'/0'/0/0` for mnemonic derivation
-- **Solana**: uses `solders`; BIP44 path `m/44'/501'/0'/0'` for mnemonic derivation
-- Individual key (`AVE_EVM_PRIVATE_KEY` / `AVE_SOLANA_PRIVATE_KEY`) takes priority over mnemonic
-
-## Learn More
-
-- API docs: [cloud.ave.ai](https://cloud.ave.ai/)
-- Register: [cloud.ave.ai/register](https://cloud.ave.ai/register)
-- Community: [t.me/aveai_english](https://t.me/aveai_english) | [discord.gg/Z2RmAzF2](https://discord.gg/Z2RmAzF2)
 
 ## Reference
 
-See `references/trade-api-doc.md` → Chain Wallet Trading section.
+Use shared references for current PROD quirks, test caps, token conventions, error wording, response shape, and fuller trade API details.
+
+- [operator-playbook.md](../../references/operator-playbook.md)
+- [error-translation.md](../../references/error-translation.md)
+- [safe-test-defaults.md](../../references/safe-test-defaults.md)
+- [token-conventions.md](../../references/token-conventions.md)
+- [response-contract.md](../../references/response-contract.md)
+- [learn-more.md](../../references/learn-more.md)
+- [trade-api-doc.md](../../references/trade-api-doc.md)
