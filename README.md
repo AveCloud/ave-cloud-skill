@@ -74,8 +74,7 @@ docker run --rm \
 | OpenCode | clone + symlink | .opencode/ |
 | OpenClaw | clone + symlink | .openclaw/ |
 
-This repo ships `.claude-plugin/`, `.codex/`, `.cursor-plugin/`, and `.opencode/`.
-Use the same clone + symlink pattern for OpenClaw if you maintain a matching `.openclaw/` directory.
+See each config directory for client-specific install instructions.
 
 ### API Plan Matrix
 
