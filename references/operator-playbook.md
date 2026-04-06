@@ -1,6 +1,15 @@
 ## AVE Operator Playbook
 
-Use this reference when the request spans multiple AVE skills or when the agent needs one shared source for current operating rules.
+Shared cross-skill operating rules. Individual reference files cover specific topics — see links below.
+
+### See Also
+
+- [error-translation.md](error-translation.md) — unified error table
+- [safe-test-defaults.md](safe-test-defaults.md) — per-chain test caps
+- [token-conventions.md](token-conventions.md) — address rules, trading params, signing
+- [response-contract.md](response-contract.md) — response templates, state handoff, recovery
+- [presentation-guide.md](presentation-guide.md) — output formatting and card templates
+- [learn-more.md](learn-more.md) — AVE links and cloud registration
 
 ### Trade Path Preference
 
@@ -18,27 +27,17 @@ Use this reference when the request spans multiple AVE skills or when the agent 
 
 ### Chat Surface Guidance
 
-- OpenClaw: default to compact cards, short summaries, and ASCII mini-chart fallback.
-- Claude: keep explanations clear, but still summarize raw payloads into user-facing decisions.
-- Codex: prefer terse operator output with identifiers and next actions first.
-
-### Client-Specific Defaults
-
 | Client | Default |
 |---|---|
-| OpenClaw | compact token card, concise live summary, avoid wide tables, prefer one-screen updates |
-| Claude | brief explanation plus decision, then identifiers and next action |
-| Codex | shortest path to action, IDs and command-relevant output first |
+| OpenClaw | Compact token card, concise live summary, avoid wide tables, prefer one-screen updates |
+| Claude | Brief explanation plus decision, then identifiers and next action |
+| Codex | Shortest path to action, IDs and command-relevant output first |
 
 ### Token Link Pattern
 
 When a token address and chain are known, include:
 
 `https://pro.ave.ai/token/<token_address>-<chain>`
-
-Example:
-
-`https://pro.ave.ai/token/0x833679c9a3e0bb7258aa3a71162e2bd42bea4444-bsc`
 
 ### Current PROD Quirks
 
@@ -47,37 +46,3 @@ Example:
 - Data WSS connection churn can trigger `Too Many Connections`; reuse connections instead of opening many fresh sockets.
 - Solana route minimums can reject very small notionals; increase slightly only when the user-approved cap allows it.
 - For high-level EVM `swap-evm`, a user RPC URL is required for local signing metadata.
-
-### Common Recovery Rules
-
-| Failure | Recovery |
-|---|---|
-| `Too Many Connections` | close extra WSS sessions, reuse the existing daemon or REPL, retry after reducing socket count |
-| route too small | increase notional slightly or stop and explain the route minimum |
-| approval required | perform approval first, then retry the spend or sell |
-| proxy wallet unfunded | stop and ask for funding |
-| RPC missing | request the user's RPC URL; do not fall back to public RPCs |
-| token risk unclear | switch back to REST risk/liquidity checks before trading |
-
-### Common State To Preserve
-
-Carry these across turns when known:
-
-- chain
-- token or pair
-- assetsId
-- requestTxId
-- proxy order ID
-- tx hash
-- spend cap
-- test vs real
-- active watch mode
-
-### Response Priority Order
-
-When reporting an action result, use this order unless the user explicitly wants raw payloads first:
-
-1. outcome
-2. spend / fees / slippage
-3. identifiers
-4. next action

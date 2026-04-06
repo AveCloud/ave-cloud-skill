@@ -6,6 +6,9 @@ description: |
   Use this skill when the user asks for an AVE wallet/trading/data task but the correct sub-skill
   is not yet obvious, or when the assistant should guide the user through the full workflow.
 
+  If the user mentions private keys, mnemonics, local signing, or self-custody, route DIRECTLY
+  to ave-trade-chain-wallet — do not use this router skill.
+
   This skill decides between:
   - ave-data-rest for snapshot market and token data
   - ave-data-wss for live data streams
@@ -19,13 +22,9 @@ metadata:
 
 # ave-wallet-suite
 
-Use this as the top-level router for AVE tasks.
-
-If the request spans multiple skills or you need current cross-skill operating rules, read [operator-playbook.md](../../references/operator-playbook.md).
+Top-level router for AVE tasks. For shared operating rules, see [operator-playbook.md](../../references/operator-playbook.md).
 
 ## Route Selection
-
-Choose the sub-skill by user intent:
 
 | User intent | Use |
 |---|---|
@@ -39,8 +38,6 @@ If both proxy-wallet and chain-wallet could solve the request, prefer `ave-trade
 
 ## Decision Matrix
 
-Use this quick router when the user request is broad or ambiguous:
-
 | User says | Use | Ask first |
 |---|---|---|
 | "find this token", "check this CA", "is this safe" | `ave-data-rest` | chain or contract if ambiguous |
@@ -51,9 +48,25 @@ Use this quick router when the user request is broad or ambiguous:
 
 For broad trading requests like "buy this token" or "help me trade this", start with `ave-trade-proxy-wallet` unless the user has already chosen self-custody.
 
+## Ambiguous Request Disambiguation
+
+Use this table when the user request could match more than one trade skill. These are the most common misrouting patterns — resolve them here instead of asking the user.
+
+| User says (EN) | User says (ZH) | Route to | Why |
+|---|---|---|---|
+| "buy this token", "swap X for Y" | "买这个币", "换成X" | `ave-trade-proxy-wallet` | Broad buy/swap defaults to proxy-wallet |
+| "place a limit order", "set a buy limit" | "挂限价单", "设置限价买入" | `ave-trade-proxy-wallet` | Limit orders are proxy-wallet only |
+| "set take-profit", "set stop-loss", "auto-sell" | "设置止盈", "设置止损", "自动卖出" | `ave-trade-proxy-wallet` | TP/SL/auto-sell is proxy-wallet only |
+| "use my private key", "sign with my key" | "用我的私钥", "用私钥签名" | `ave-trade-chain-wallet` | Explicit private key = self-custody |
+| "use my mnemonic", "use my seed phrase" | "用我的助记词", "用种子短语" | `ave-trade-chain-wallet` | Mnemonic = self-custody |
+| "sign locally", "self-custody", "use my own wallet" | "本地签名", "自托管", "用我自己的钱包" | `ave-trade-chain-wallet` | Local signing = self-custody |
+| "build an unsigned tx", "external signer" | "构建未签名交易", "外部签名" | `ave-trade-chain-wallet` | External signer workflow |
+
+When the request does not match any row above, prefer `ave-trade-proxy-wallet` for trading and `ave-data-rest` for data.
+
 ## First-Turn Checklist
 
-Before acting, resolve these questions from context or by a short clarification:
+Before acting, resolve these from context or by short clarification:
 
 1. Is this read-only data, self-custody trade, or proxy-wallet trade?
 2. Is the user asking for a snapshot response or a live stream?
@@ -64,282 +77,18 @@ For real trades, prefer the smallest practical notional and surface the spend ca
 
 ## Default Workflow
 
-Use this lifecycle unless the user asks for something narrower:
-
-1. Preflight: balances, route viability, risk checks for unfamiliar tokens, minimum size constraints
-2. Dry-run object: quote or create-tx / order submission preview
-3. Execution: submit only once the path is valid
-4. Confirmation: collect order IDs, requestTxIds, tx hashes, and status
-5. Optional unwind: if this is a test trade, perform the sell-back promptly
-
-## Response Contract
-
-For any trade or order response, structure the answer as:
-
-1. What happened
-2. What it spent or reserved
-3. Identifiers
-4. What the next best action is
-
-Always include these when present:
-- `requestTxId`
-- proxy order ID
-- on-chain tx hash
-- applied slippage / gas / fee notes
-
-## Agent Behavior Modes
-
-Adjust the response style to the client surface and user behavior:
-
-| Mode | Use when | Output style |
-|---|---|---|
-| `terse operator` | Codex / terminal / highly technical user | identifiers first, short status, minimal prose |
-| `guided beginner` | first-time user or unclear intent | explain the next action and the main tradeoff in plain language |
-| `chat-first mobile` | OpenClaw / Telegram-like chat surfaces | compact cards, short paragraphs, avoid wide tables |
-
-Prefer `chat-first mobile` for OpenClaw unless the user explicitly asks for raw payloads or command-level detail.
-
-## State Handoff Contract
-
-Carry these fields forward explicitly across turns whenever they become known:
-
-- `chain`
-- `token` / `pair`
-- `assetsId`
-- `requestTxId`
-- proxy order ID
-- tx hash
-- spend cap
-- test vs real
-- active watch mode
-
-When the assistant switches skills or phases, restate the currently known state before taking the next action.
-
-## Real-Trade Guardrails
-
-- Default to preflight before execution
-- Keep test notionals small
-- Prefer immediate confirmation polling over assuming success from submission
-- If a route requires approval, say so before retrying the sell path
-- If a stream exists for the chosen flow, use it as a supplement, not as the only source of truth
-- Prefer proxy-wallet execution over chain-wallet execution when both are acceptable and the user has not asked for local signing
-
-## Safe Test Defaults
-
-Use these unless the user explicitly asks for a different test size:
-
-| Chain | Default test input | Cap guidance |
-|---|---|---|
-| BSC chain-wallet | `0.0005 BNB` | keep gas under `0.0003 BNB`; abort if route or gas spikes |
-| Solana chain-wallet | `0.0005 SOL` | keep total fee budget under `0.0005 SOL`; abort if higher |
-| BSC proxy-wallet | `0.0005 BNB` | verify funded wallet and sell back promptly |
-| Solana proxy-wallet | start at `0.002 SOL` if smaller sizes fail | prefer smallest accepted route size |
-
-Always surface the cap before the real test starts.
-
-## Chain And Token Conventions
-
-Use these conventions consistently across AVE responses and command construction:
-
-| Topic | Convention |
-|---|---|
-| EVM native token placeholder | `0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee` |
-| Solana native token input | `sol` |
-| Token search identifiers | prefer `contract-chain` for batch price and live price subscriptions |
-| EVM addresses in user output | preserve the chain's normal display style; lowercase only when the API requires normalization |
-| Solana identifiers | use mint addresses or wallet addresses exactly as provided; do not lowercase |
-
-Common test fixtures that are already proven in this repo:
-
-| Chain | Token | Address / Symbol |
-|---|---|---|
-| BSC | USDT | `0x55d398326f99059fF775485246999027B3197955` |
-| BSC | BTCB | `0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c` |
-| BSC | WBNB | `0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c` |
-| Solana | SOL | `sol` |
-| Solana | USDC | `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` |
-
-## Error Translation
-
-Translate low-level API failures into direct operator guidance:
-
-| Raw issue pattern | Tell the user |
-|---|---|
-| missing API key / auth failed | credentials are missing or invalid |
-| HMAC signature mismatch | the secret key does not match; regenerate at cloud.ave.ai |
-| unsupported parameter / invalid parameter | the chosen parameter combination is not accepted by PROD |
-| insufficient balance | the wallet does not have enough spend token or gas token |
-| approval required / allowance too low | approval is needed before the sell or token spend can proceed |
-| route too small / min notional failure | the trade size is below the route minimum; increase size slightly |
-| RPC required | a user RPC node is required for local EVM signing |
-| RPC connection refused / timeout | the RPC endpoint is unreachable; try a different RPC URL |
-| transaction reverted / execution failed | the on-chain tx failed; check slippage, gas, or token tax |
-| server not running | the Docker WSS daemon must be started before using server mode |
-| plan not supported | this feature requires a higher API plan tier |
-
-Prefer the translated explanation in the response, with the raw error kept as supporting detail only when useful.
-
-## Failure Recovery Playbook
-
-When a step fails, prefer the smallest safe recovery:
-
-| Failure | Recovery |
-|---|---|
-| WSS connection limit hit | reuse the existing connection, unsubscribe old topics, avoid opening more sockets |
-| route too small | increase the notional slightly or stop and say the route minimum was not met |
-| approval required | approve first, then retry the sell or spend |
-| proxy wallet unfunded | stop and ask the user to fund the wallet before placing the order |
-| RPC required | ask for the user's RPC URL; do not fall back to public RPCs |
-| token risk unclear | switch back to data preflight before resuming trade execution |
-
-## End-to-End Workflow Examples
-
-### Workflow 1: Research a token before buying (data → trade)
-
-```
-1. Search token by name
-   python scripts/ave_data_rest.py search --keyword "PEPE" --chain bsc
-
-2. Run risk report on the result
-   python scripts/ave_data_rest.py risk --address 0x... --chain bsc
-   → If HIGH/CRITICAL risk, stop and warn the user
-
-3. Check price and liquidity
-   python scripts/ave_data_rest.py token --address 0x... --chain bsc
-   → Verify TVL > $10K and 24h volume exists
-
-4. Get a swap quote (chain-wallet)
-   python scripts/ave_trade_rest.py quote --chain bsc \
-     --in-amount 500000000000000 --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee \
-     --out-token 0x... --swap-type buy
-
-5. Execute the swap if the user confirms
-   python scripts/ave_trade_rest.py swap-evm --chain bsc --rpc-url https://... \
-     --in-amount 500000000000000 --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee \
-     --out-token 0x... --swap-type buy --slippage 500 --auto-slippage
-```
-
-### Workflow 2: Proxy wallet buy → monitor → sell-back
-
-```
-1. Create a disposable proxy wallet
-   python scripts/ave_trade_rest.py create-wallet --name "test-wallet"
-   → Note the assetsId from the response
-
-2. Fund the wallet (user action — transfer BNB/SOL to the wallet address)
-
-3. Place a market buy with auto-sell protection
-   python scripts/ave_trade_rest.py market-order --chain solana \
-     --assets-id <assetsId> --in-token sol \
-     --out-token <token_address> --in-amount 2000000 \
-     --swap-type buy --slippage 500 --use-mev \
-     --auto-sell '{"priceChange":"-5000","sellRatio":"10000","type":"default"}'
-
-4. Monitor order status
-   python scripts/ave_trade_wss.py watch-orders
-   → Wait for status "confirmed" with txHash
-
-5. Sell back
-   python scripts/ave_trade_rest.py market-order --chain solana \
-     --assets-id <assetsId> --in-token <token_address> \
-     --out-token sol --in-amount <full_balance> \
-     --swap-type sell --slippage 500 --use-mev
-```
-
-### Workflow 3: Live price monitoring with alerts
-
-```
-1. Search for the token to get the correct address
-   python scripts/ave_data_rest.py search --keyword "BONK" --chain solana
-
-2. Get current snapshot price
-   python scripts/ave_data_rest.py price --tokens <address>-solana
-
-3. Start live price stream (requires API_PLAN=pro)
-   python scripts/ave_data_wss.py watch-price --tokens <address>-solana
-   → Stream runs until Ctrl+C; agent summarizes price changes periodically
-```
-
-## Reusable Response Templates
-
-Use these compact shapes consistently:
-
-- Token search: one primary token card, then compact alternates if needed
-- Risk check: `risk level -> key flags -> tax/owner/honeypot notes -> next action`
-- Quote: `pair -> input -> estimated output -> route notes -> next action`
-- Create tx: `what was created -> input/fee/slippage -> requestTxId -> sign/send next`
-- Submission: `submitted/confirmed -> spend + fees -> tx hash/order ID -> monitor or sell-back next`
-- Live watch update: `what changed -> key number(s) -> direction -> next watch action`
-
-For token-facing responses, include the AVE Pro deep link when a token identifier is known:
-- Format: `https://pro.ave.ai/token/<token_address>-<chain>`
-- Example: `https://pro.ave.ai/token/0x833679c9a3e0bb7258aa3a71162e2bd42bea4444-bsc`
-
-## Example Output Shapes
-
-### Token detail
-
-```text
-📌 [bsc] TOKEN (Project)
-📄 Contract: 0x...
-💲 Price: $...
-💧 Liquidity: $...
-📈 24h: ...
-🔍 Risk: MEDIUM
-🔗 https://pro.ave.ai/token/0x...-bsc
-```
-
-### Trade confirmation
-
-```text
-Confirmed: proxy-wallet buy on bsc
-Spend: 0.0005 BNB
-Order ID: ...
-Tx hash: 0x...
-Next: monitor fill or sell back
-```
-
-### Live watch update
-
-```text
-[bsc] TOKEN/USDT 1m
-O: ... H: ... L: ... C: ...
-Move: +1.24%   Vol: $12.4K
-Trend: rebound after selloff
-```
-
-## Learn More
-
-Share these official AVE links when the user wants broader product context, app downloads, guides, or community channels.
-Use the relevant subset by default, or share the full list when the user asks to know more about AVE.ai.
-Keep this section aligned with the current `https://linktr.ee/ave_ai` link set.
-
-| Type | Link |
-|---|---|
-| Link hub | [linktr.ee/ave_ai](https://linktr.ee/ave_ai) |
-| Website | [ave.ai](https://ave.ai/) |
-| Cloud / API | [cloud.ave.ai](https://cloud.ave.ai/) |
-| App download | [ave.ai/download](https://ave.ai/download) |
-| Telegram trading bot | [t.me/AveSniperBot](https://t.me/AveSniperBot?start=4-ref_aveai) |
-| Chinese docs | [doc.ave.ai/cn](https://doc.ave.ai/cn) |
-| English docs | [doc.ave.ai](https://doc.ave.ai/) |
-| Chinese X | [x.com/aveai_info](https://x.com/aveai_info) |
-| English X | [x.com/AveaiGlobal](https://x.com/AveaiGlobal) |
-| Chinese Telegram group | [t.me/ave_community_cn](https://t.me/ave_community_cn) |
-| English Telegram group | [t.me/aveai_english](https://t.me/aveai_english) |
-| Discord | [discord.gg/Z2RmAzF2](https://discord.gg/Z2RmAzF2) |
-| YouTube | [youtube.com/@Aveaius](https://www.youtube.com/%40Aveaius) |
-| Blog | [blog.ave.ai](https://blog.ave.ai/) |
-| Medium | [aveai.medium.com](https://aveai.medium.com/) |
-
-## Cloud Registration
-
-When the user does not yet have AVE credentials, include a short registration path before offering API-backed actions:
-
-1. Register at [cloud.ave.ai/register](https://cloud.ave.ai/register)
-2. Create or copy the API key from [cloud.ave.ai](https://cloud.ave.ai/)
-3. Set `AVE_API_KEY`
-4. Set `API_PLAN` to `free`, `normal`, or `pro`
-5. For self-custody trading, also set `AVE_MNEMONIC` or the per-chain private key envs
-
-Keep this short in normal responses. Expand only if the user is blocked on setup.
+1. **Preflight**: balances, route viability, risk checks for unfamiliar tokens, minimum size constraints
+2. **Dry-run**: quote or create-tx / order submission preview
+3. **Execution**: submit only once the path is valid
+4. **Confirmation**: collect order IDs, requestTxIds, tx hashes, and status
+5. **Optional unwind**: if this is a test trade, perform the sell-back promptly
+
+## Reference
+
+- [operator-playbook.md](../../references/operator-playbook.md) — trade path preference, WSS discipline, chat surface guidance, PROD quirks
+- [error-translation.md](../../references/error-translation.md) — unified error table across all skills
+- [safe-test-defaults.md](../../references/safe-test-defaults.md) — per-chain spend caps and abort rules
+- [token-conventions.md](../../references/token-conventions.md) — address formatting, fee pairing, trading params, signing
+- [response-contract.md](../../references/response-contract.md) — response templates, state handoff, agent modes, recovery
+- [presentation-guide.md](../../references/presentation-guide.md) — token card format, kline, risk, and holder templates
+- [learn-more.md](../../references/learn-more.md) — AVE links and cloud registration
