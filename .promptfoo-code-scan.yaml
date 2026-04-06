@@ -1,0 +1,13 @@
+minSeverity: medium
+diffsOnly: false
+guidance: |
+  Focus on GitHub Actions workflow safety, PR-comment-triggered execution, credential handling,
+  secret leakage into logs or command arguments, overly broad token permissions, and agent or
+  tool flows with excessive agency.
+
+  Prioritize findings in scripts/, skills/, references used by skills, and .github/workflows/.
+  Treat unsafe execution of untrusted pull request code, pull_request_target misuse, and secret
+  exposure as high or critical severity when warranted.
+
+  Ignore pure documentation translation issues unless they create a security or safety problem.
+
