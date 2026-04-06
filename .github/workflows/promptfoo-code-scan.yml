@@ -1,0 +1,78 @@
+name: Promptfoo Code Scan
+
+on:
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to scan
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  issues: read
+  pull-requests: write
+
+concurrency:
+  group: promptfoo-scan-pr-${{ github.event.issue.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.issue.pull_request &&
+        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
+        (contains(github.event.comment.body, '/promptfoo scan') || contains(github.event.comment.body, '@promptfoo-scanner'))
+      )
+    runs-on: ubuntu-latest
+    outputs:
+      head_sha: ${{ steps.pr.outputs.head_sha }}
+      same_repo: ${{ steps.pr.outputs.same_repo }}
+    steps:
+      - name: Resolve PR context
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          INPUT_PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          GITHUB_SHA_VALUE: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "head_sha=$GITHUB_SHA_VALUE" >> "$GITHUB_OUTPUT"
+            echo "same_repo=true" >> "$GITHUB_OUTPUT"
+          else
+            :
+          fi
+          effective_pr_number="${PR_NUMBER:-$INPUT_PR_NUMBER}"
+          if [ -z "$effective_pr_number" ]; then
+            echo "Missing PR number" >&2
+            exit 1
+          fi
+          pr_json="$(gh api "repos/$REPO/pulls/$effective_pr_number")"
+          echo "head_sha=$(jq -r '.head.sha' <<<"$pr_json")" >> "$GITHUB_OUTPUT"
+          echo "same_repo=$(jq -r --arg repo "$REPO" '.head.repo.full_name == $repo' <<<"$pr_json")" >> "$GITHUB_OUTPUT"
+
+  code-scan:
+    needs: prepare
+    if: needs.prepare.outputs.same_repo == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.head_sha }}
+          fetch-depth: 0
+      - name: Run Promptfoo Code Scan
+        uses: promptfoo/code-scan-action@v0.1.4
+        with:
+          github-token: ${{ github.token }}
+          config-path: .promptfoo-code-scan.yaml
+          min-severity: medium

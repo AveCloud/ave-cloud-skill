@@ -1,0 +1,15 @@
+name: Metadata Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate metadata
+        run: bash scripts/ci/check-metadata.sh

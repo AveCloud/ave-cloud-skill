@@ -1,0 +1,42 @@
+# OS / editor noise
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local environments and secrets
+.env
+.env.*
+.venv/
+venv/
+ENV/
+env/
+
+# Node / Promptfoo
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.promptfoo/
+promptfoo-results*.json
+.local/*
+!.local/.gitkeep
+
+# Build / temp artifacts
+dist/
+build/
+tmp/
+temp/
+*.log
+Makefile
