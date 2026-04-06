@@ -1,0 +1,15 @@
+name: Install Surface Smoke Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  install-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check install surfaces
+        run: bash scripts/ci/check-install-surfaces.sh
