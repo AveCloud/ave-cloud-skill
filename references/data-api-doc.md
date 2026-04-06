@@ -18,7 +18,7 @@ Rate limits by plan:
 | normal | 5 | 0.2s |
 | pro | 20 | 0.05s |
 
-All errors return standard HTTP codes: 401 (invalid key), 403 (rate limit), 400 (bad params), 404 (not found).
+All errors return standard HTTP codes: 401/403 (invalid key or other auth issue), 429 (rate limit), 400 (bad params), 404 (not found).
 
 ## Base URLs
 
