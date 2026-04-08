@@ -468,6 +468,13 @@ def cmd_wallet_tokens(args):
     handle_response(api_get("/address/walletinfo/tokens", params))
 
 
+def cmd_wallet_info(args):
+    params = {"wallet_address": args.wallet, "chain": args.chain}
+    if args.self_address:
+        params["self_address"] = args.self_address
+    handle_response(api_get("/address/walletinfo", params))
+
+
 def main():
     if not IN_SERVER:
         _docker_gate("ave_data_rest.py")
@@ -576,6 +583,11 @@ def main():
     p.add_argument("--hide-small", type=float, default=None, help="Hide tokens below USD value")
     p.add_argument("--blue-chips", action="store_true", help="Only show blue-chip tokens")
 
+    p = sub.add_parser("wallet-info", help="Get wallet overview and stats")
+    p.add_argument("--wallet", required=True, help="Wallet address to inspect")
+    p.add_argument("--chain", required=True)
+    p.add_argument("--self-address", default=None, help="Your own address for relative stats")
+
     if not IN_SERVER:
         _docker_gate("ave_data_rest.py")
 
@@ -601,6 +613,7 @@ def main():
         "address-txs": cmd_address_txs,
         "address-pnl": cmd_address_pnl,
         "wallet-tokens": cmd_wallet_tokens,
+        "wallet-info": cmd_wallet_info,
     }
 
     try:
