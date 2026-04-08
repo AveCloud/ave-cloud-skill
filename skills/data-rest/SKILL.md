@@ -1,6 +1,6 @@
 ---
 name: ave-data-rest
-version: 2.2.0
+version: 2.3.0
 description: |
   Query on-chain crypto data via the AVE Cloud Data REST API (https://cloud.ave.ai/).
   Use this skill whenever the user wants to:
