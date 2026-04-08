@@ -475,6 +475,30 @@ def cmd_wallet_info(args):
     handle_response(api_get("/address/walletinfo", params))
 
 
+def cmd_smart_wallets(args):
+    params = {"chain": args.chain}
+    if args.keyword:
+        params["keyword"] = args.keyword
+    if args.sort:
+        params["sort"] = args.sort
+    if args.sort_dir:
+        params["sort_dir"] = args.sort_dir
+    for name in (
+        "profit_above_900_percent_num_min", "profit_above_900_percent_num_max",
+        "profit_300_900_percent_num_min", "profit_300_900_percent_num_max",
+        "profit_100_300_percent_num_min", "profit_100_300_percent_num_max",
+        "profit_10_100_percent_num_min", "profit_10_100_percent_num_max",
+        "profit_neg10_10_percent_num_min", "profit_neg10_10_percent_num_max",
+        "profit_neg50_neg10_percent_num_min", "profit_neg50_neg10_percent_num_max",
+        "profit_neg100_neg50_percent_num_min", "profit_neg100_neg50_percent_num_max",
+        "last_trade_time_min", "last_trade_time_max",
+    ):
+        val = getattr(args, name, None)
+        if val is not None:
+            params[name] = val
+    handle_response(api_get("/address/smart_wallet/list", params))
+
+
 def main():
     if not IN_SERVER:
         _docker_gate("ave_data_rest.py")
@@ -588,6 +612,28 @@ def main():
     p.add_argument("--chain", required=True)
     p.add_argument("--self-address", default=None, help="Your own address for relative stats")
 
+    p = sub.add_parser("smart-wallets", help="List smart wallets with profit filters")
+    p.add_argument("--chain", required=True)
+    p.add_argument("--keyword", default=None, help="Search by address keyword")
+    p.add_argument("--sort", default=None)
+    p.add_argument("--sort-dir", default=None, choices=["asc", "desc"])
+    p.add_argument("--profit-above-900-percent-num-min", type=float, default=None, dest="profit_above_900_percent_num_min")
+    p.add_argument("--profit-above-900-percent-num-max", type=float, default=None, dest="profit_above_900_percent_num_max")
+    p.add_argument("--profit-300-900-percent-num-min", type=float, default=None, dest="profit_300_900_percent_num_min")
+    p.add_argument("--profit-300-900-percent-num-max", type=float, default=None, dest="profit_300_900_percent_num_max")
+    p.add_argument("--profit-100-300-percent-num-min", type=float, default=None, dest="profit_100_300_percent_num_min")
+    p.add_argument("--profit-100-300-percent-num-max", type=float, default=None, dest="profit_100_300_percent_num_max")
+    p.add_argument("--profit-10-100-percent-num-min", type=float, default=None, dest="profit_10_100_percent_num_min")
+    p.add_argument("--profit-10-100-percent-num-max", type=float, default=None, dest="profit_10_100_percent_num_max")
+    p.add_argument("--profit-neg10-10-percent-num-min", type=float, default=None, dest="profit_neg10_10_percent_num_min")
+    p.add_argument("--profit-neg10-10-percent-num-max", type=float, default=None, dest="profit_neg10_10_percent_num_max")
+    p.add_argument("--profit-neg50-neg10-percent-num-min", type=float, default=None, dest="profit_neg50_neg10_percent_num_min")
+    p.add_argument("--profit-neg50-neg10-percent-num-max", type=float, default=None, dest="profit_neg50_neg10_percent_num_max")
+    p.add_argument("--profit-neg100-neg50-percent-num-min", type=float, default=None, dest="profit_neg100_neg50_percent_num_min")
+    p.add_argument("--profit-neg100-neg50-percent-num-max", type=float, default=None, dest="profit_neg100_neg50_percent_num_max")
+    p.add_argument("--last-trade-time-min", type=float, default=None, dest="last_trade_time_min")
+    p.add_argument("--last-trade-time-max", type=float, default=None, dest="last_trade_time_max")
+
     if not IN_SERVER:
         _docker_gate("ave_data_rest.py")
 
@@ -614,6 +660,7 @@ def main():
         "address-pnl": cmd_address_pnl,
         "wallet-tokens": cmd_wallet_tokens,
         "wallet-info": cmd_wallet_info,
+        "smart-wallets": cmd_smart_wallets,
     }
 
     try:
