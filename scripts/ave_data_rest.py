@@ -504,6 +504,17 @@ def cmd_signals(args):
     handle_response(api_get("/signals/public/list", params))
 
 
+def cmd_liq_txs(args):
+    params = {"limit": args.limit, "sort": args.sort}
+    if args.from_time is not None:
+        params["from_time"] = args.from_time
+    if args.to_time is not None:
+        params["to_time"] = args.to_time
+    if args.type:
+        params["type"] = args.type
+    handle_response(api_get(f"/txs/liq/{args.address}-{args.chain}", params))
+
+
 def main():
     if not IN_SERVER:
         _docker_gate("ave_data_rest.py")
@@ -644,6 +655,16 @@ def main():
     p.add_argument("--page-size", type=int, default=10)
     p.add_argument("--page-no", type=int, default=1)
 
+    p = sub.add_parser("liq-txs", help="Get liquidity transactions for a pair")
+    p.add_argument("--address", required=True, help="Pair address")
+    p.add_argument("--chain", required=True)
+    p.add_argument("--limit", type=int, default=100)
+    p.add_argument("--from-time", type=int, default=None, help="Unix timestamp start")
+    p.add_argument("--to-time", type=int, default=None, help="Unix timestamp end")
+    p.add_argument("--type", default="all",
+                   choices=["addLiquidity", "removeLiquidity", "createPair", "all"])
+    p.add_argument("--sort", default="asc", choices=["asc", "desc"])
+
     if not IN_SERVER:
         _docker_gate("ave_data_rest.py")
 
@@ -672,6 +693,7 @@ def main():
         "wallet-info": cmd_wallet_info,
         "smart-wallets": cmd_smart_wallets,
         "signals": cmd_signals,
+        "liq-txs": cmd_liq_txs,
     }
 
     try:
