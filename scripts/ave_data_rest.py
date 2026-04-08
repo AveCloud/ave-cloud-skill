@@ -425,6 +425,21 @@ def cmd_main_tokens(args):
     handle_response(api_get("/tokens/main", {"chain": args.chain}))
 
 
+def cmd_address_txs(args):
+    params = {"wallet_address": args.wallet, "chain": args.chain}
+    if args.token:
+        params["token_address"] = args.token
+    if args.from_time is not None:
+        params["from_time"] = args.from_time
+    if args.last_time:
+        params["last_time"] = args.last_time
+    if args.last_id:
+        params["last_id"] = args.last_id
+    if args.page_size:
+        params["page_size"] = args.page_size
+    handle_response(api_get("/address/tx", params))
+
+
 def main():
     if not IN_SERVER:
         _docker_gate("ave_data_rest.py")
@@ -508,6 +523,15 @@ def main():
     p = sub.add_parser("main-tokens", help="Get main tokens for a chain")
     p.add_argument("--chain", required=True)
 
+    p = sub.add_parser("address-txs", help="Get wallet swap transaction history")
+    p.add_argument("--wallet", required=True, help="Wallet address")
+    p.add_argument("--chain", required=True)
+    p.add_argument("--token", default=None, help="Filter by token address")
+    p.add_argument("--from-time", type=int, default=None, help="Unix timestamp start")
+    p.add_argument("--last-time", default=None, help="RFC3339 cursor for pagination")
+    p.add_argument("--last-id", default=None, help="Cursor ID for pagination")
+    p.add_argument("--page-size", type=int, default=None, help="Results per page (max 100)")
+
     if not IN_SERVER:
         _docker_gate("ave_data_rest.py")
 
@@ -530,6 +554,7 @@ def main():
         "risk": cmd_risk,
         "chains": cmd_chains,
         "main-tokens": cmd_main_tokens,
+        "address-txs": cmd_address_txs,
     }
 
     try:
