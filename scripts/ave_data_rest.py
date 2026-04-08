@@ -499,6 +499,11 @@ def cmd_smart_wallets(args):
     handle_response(api_get("/address/smart_wallet/list", params))
 
 
+def cmd_signals(args):
+    params = {"chain": args.chain, "pageSize": args.page_size, "pageNO": args.page_no}
+    handle_response(api_get("/signals/public/list", params))
+
+
 def main():
     if not IN_SERVER:
         _docker_gate("ave_data_rest.py")
@@ -634,6 +639,11 @@ def main():
     p.add_argument("--last-trade-time-min", type=float, default=None, dest="last_trade_time_min")
     p.add_argument("--last-trade-time-max", type=float, default=None, dest="last_trade_time_max")
 
+    p = sub.add_parser("signals", help="Get public trading signals")
+    p.add_argument("--chain", default="solana")
+    p.add_argument("--page-size", type=int, default=10)
+    p.add_argument("--page-no", type=int, default=1)
+
     if not IN_SERVER:
         _docker_gate("ave_data_rest.py")
 
@@ -661,6 +671,7 @@ def main():
         "wallet-tokens": cmd_wallet_tokens,
         "wallet-info": cmd_wallet_info,
         "smart-wallets": cmd_smart_wallets,
+        "signals": cmd_signals,
     }
 
     try:
