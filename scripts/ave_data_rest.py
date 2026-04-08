@@ -360,7 +360,14 @@ def cmd_kline_pair(args):
 
 
 def cmd_holders(args):
-    handle_response(api_get(f"/tokens/top100/{args.address}-{args.chain}"))
+    params = {}
+    if args.limit:
+        params["limit"] = args.limit
+    if args.sort_by:
+        params["sort_by"] = args.sort_by
+    if args.order:
+        params["order"] = args.order
+    handle_response(api_get(f"/tokens/holders/{args.address}-{args.chain}", params))
 
 
 def cmd_txs(args):
@@ -434,9 +441,12 @@ def main():
                    choices=[1, 5, 15, 30, 60, 120, 240, 1440, 4320, 10080])
     p.add_argument("--size", type=int, default=24)
 
-    p = sub.add_parser("holders", help="Get top 100 holders")
+    p = sub.add_parser("holders", help="Get token holders with sort/order")
     p.add_argument("--address", required=True)
     p.add_argument("--chain", required=True)
+    p.add_argument("--limit", type=int, default=100)
+    p.add_argument("--sort-by", default="balance", choices=["balance", "percentage"])
+    p.add_argument("--order", default="desc", choices=["asc", "desc"])
 
     p = sub.add_parser("txs", help="Get swap transactions for a pair")
     p.add_argument("--address", required=True)
