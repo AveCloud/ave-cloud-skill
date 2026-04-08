@@ -359,6 +359,24 @@ def cmd_kline_pair(args):
     print(json.dumps(body, indent=2))
 
 
+def cmd_kline_ondo(args):
+    params = {"interval": args.interval, "limit": args.size}
+    if args.from_time is not None:
+        params["from_time"] = args.from_time
+    if args.to_time is not None:
+        params["to_time"] = args.to_time
+    resp = api_get(f"/klines/pair/ondo/{args.pair}", params)
+    if resp.status_code >= 400:
+        raise RuntimeError(f"API error {resp.status_code}: {resp.text}")
+    body = resp.json()
+    points = body.get("data", {}).get("points")
+    if isinstance(points, list) and len(points) > args.size:
+        body["data"]["points"] = points[-args.size:]
+        body["data"]["limit"] = args.size
+        body["data"]["total_count"] = len(body["data"]["points"])
+    print(json.dumps(body, indent=2))
+
+
 def cmd_holders(args):
     params = {}
     if args.limit:
@@ -449,6 +467,13 @@ def main():
                    choices=[1, 5, 15, 30, 60, 120, 240, 1440, 4320, 10080])
     p.add_argument("--size", type=int, default=24)
 
+    p = sub.add_parser("kline-ondo", help="Get Ondo-mapped kline data by pair address or ticker")
+    p.add_argument("--pair", required=True, help="pair_address-chain or ticker symbol")
+    p.add_argument("--interval", type=int, default=60, choices=[1, 5, 15, 60, 240, 720, 1440])
+    p.add_argument("--size", type=int, default=24)
+    p.add_argument("--from-time", type=int, default=None)
+    p.add_argument("--to-time", type=int, default=None)
+
     p = sub.add_parser("holders", help="Get token holders with sort/order")
     p.add_argument("--address", required=True)
     p.add_argument("--chain", required=True)
@@ -494,6 +519,7 @@ def main():
         "price": cmd_price,
         "kline-token": cmd_kline_token,
         "kline-pair": cmd_kline_pair,
+        "kline-ondo": cmd_kline_ondo,
         "holders": cmd_holders,
         "search-details": cmd_search_details,
         "txs": cmd_txs,
