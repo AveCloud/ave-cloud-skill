@@ -1,6 +1,6 @@
 ---
 name: ave-trade-chain-wallet
-version: 2.2.0
+version: 2.3.0
 description: |
   Execute self-custody DEX trades via the AVE Cloud Chain Wallet Trading API (https://bot-api.ave.ai).
   Use this skill whenever the user wants to:

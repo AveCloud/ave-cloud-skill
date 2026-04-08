@@ -10,7 +10,7 @@
       "name": "ave-cloud-skill",
       "source": "./",
       "description": "4 AVE skills for on-chain data, WebSocket streams, chain-wallet trading, and proxy-wallet trading",
-      "version": "2.2.0",
+      "version": "2.3.0",
       "author": {
         "name": "Ave.ai"
       },

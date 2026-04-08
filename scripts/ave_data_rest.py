@@ -359,8 +359,45 @@ def cmd_kline_pair(args):
     print(json.dumps(body, indent=2))
 
 
+def cmd_kline_ondo(args):
+    params = {"interval": args.interval, "limit": args.size}
+    if args.from_time is not None:
+        params["from_time"] = args.from_time
+    if args.to_time is not None:
+        params["to_time"] = args.to_time
+    resp = api_get(f"/klines/pair/ondo/{args.pair}", params)
+    if resp.status_code >= 400:
+        raise RuntimeError(f"API error {resp.status_code}: {resp.text}")
+    body = resp.json()
+    data = body.get("data")
+    if isinstance(data, dict):
+        points = data.get("points")
+        if isinstance(points, list) and len(points) > args.size:
+            data["points"] = points[-args.size:]
+            data["limit"] = args.size
+            data["total_count"] = len(data["points"])
+    elif isinstance(data, list) and len(data) > args.size:
+        body["data"] = data[-args.size:]
+    print(json.dumps(body, indent=2))
+
+
 def cmd_holders(args):
-    handle_response(api_get(f"/tokens/top100/{args.address}-{args.chain}"))
+    params = {}
+    if args.limit:
+        params["limit"] = args.limit
+    if args.sort_by:
+        params["sort_by"] = args.sort_by
+    if args.order:
+        params["order"] = args.order
+    handle_response(api_get(f"/tokens/holders/{args.address}-{args.chain}", params))
+
+
+def cmd_search_details(args):
+    if len(args.tokens) > 50:
+        print("Error: max 50 tokens per request", file=sys.stderr)
+        sys.exit(1)
+    payload = {"token_ids": args.tokens}
+    handle_response(api_post("/tokens/search", payload))
 
 
 def cmd_txs(args):
@@ -390,6 +427,115 @@ def cmd_chains(args):
 
 def cmd_main_tokens(args):
     handle_response(api_get("/tokens/main", {"chain": args.chain}))
+
+
+def cmd_address_txs(args):
+    params = {"wallet_address": args.wallet, "chain": args.chain}
+    if args.token:
+        params["token_address"] = args.token
+    if args.from_time is not None:
+        params["from_time"] = args.from_time
+    if args.last_time:
+        params["last_time"] = args.last_time
+    if args.last_id:
+        params["last_id"] = args.last_id
+    if args.page_size:
+        params["page_size"] = args.page_size
+    handle_response(api_get("/address/tx", params))
+
+
+def cmd_address_pnl(args):
+    params = {
+        "wallet_address": args.wallet,
+        "chain": args.chain,
+        "token_address": args.token,
+    }
+    handle_response(api_get("/address/pnl", params))
+
+
+def cmd_wallet_tokens(args):
+    params = {"wallet_address": args.wallet, "chain": args.chain}
+    if args.sort:
+        params["sort"] = args.sort
+    if args.sort_dir:
+        params["sort_dir"] = args.sort_dir
+    if args.page_size:
+        params["pageSize"] = args.page_size
+    if args.page_no:
+        params["pageNO"] = args.page_no
+    if args.hide_sold:
+        params["hide_sold"] = 1
+    if args.hide_small is not None:
+        params["hide_small"] = args.hide_small
+    if args.blue_chips:
+        params["blue_chips"] = 1
+    handle_response(api_get("/address/walletinfo/tokens", params))
+
+
+def cmd_wallet_info(args):
+    params = {"wallet_address": args.wallet, "chain": args.chain}
+    if args.self_address:
+        params["self_address"] = args.self_address
+    handle_response(api_get("/address/walletinfo", params))
+
+
+def cmd_smart_wallets(args):
+    params = {"chain": args.chain}
+    if args.keyword:
+        params["keyword"] = args.keyword
+    if args.sort:
+        params["sort"] = args.sort
+    if args.sort_dir:
+        params["sort_dir"] = args.sort_dir
+    for name in (
+        "profit_above_900_percent_num_min", "profit_above_900_percent_num_max",
+        "profit_300_900_percent_num_min", "profit_300_900_percent_num_max",
+        "profit_100_300_percent_num_min", "profit_100_300_percent_num_max",
+        "profit_10_100_percent_num_min", "profit_10_100_percent_num_max",
+        "profit_neg10_10_percent_num_min", "profit_neg10_10_percent_num_max",
+        "profit_neg50_neg10_percent_num_min", "profit_neg50_neg10_percent_num_max",
+        "profit_neg100_neg50_percent_num_min", "profit_neg100_neg50_percent_num_max",
+        "last_trade_time_min", "last_trade_time_max",
+    ):
+        val = getattr(args, name, None)
+        if val is not None:
+            params[name] = val
+    handle_response(api_get("/address/smart_wallet/list", params))
+
+
+def cmd_signals(args):
+    params = {"chain": args.chain, "pageSize": args.page_size, "pageNO": args.page_no}
+    handle_response(api_get("/signals/public/list", params))
+
+
+def cmd_liq_txs(args):
+    params = {"limit": args.limit, "sort": args.sort}
+    if args.from_time is not None:
+        params["from_time"] = args.from_time
+    if args.to_time is not None:
+        params["to_time"] = args.to_time
+    if args.type:
+        params["type"] = args.type
+    handle_response(api_get(f"/txs/liq/{args.address}-{args.chain}", params))
+
+
+def cmd_tx_detail(args):
+    params = {
+        "chain": args.chain,
+        "account_address": args.account,
+        "tx_hash": args.tx_hash,
+    }
+    if args.start_from is not None:
+        params["start_from"] = args.start_from
+    if args.end_at is not None:
+        params["end_at"] = args.end_at
+    if args.limit:
+        params["limit"] = args.limit
+    handle_response(api_get("/txs/detail", params))
+
+
+def cmd_pair(args):
+    handle_response(api_get(f"/pairs/{args.address}-{args.chain}"))
 
 
 def main():
@@ -434,9 +580,23 @@ def main():
                    choices=[1, 5, 15, 30, 60, 120, 240, 1440, 4320, 10080])
     p.add_argument("--size", type=int, default=24)
 
-    p = sub.add_parser("holders", help="Get top 100 holders")
+    p = sub.add_parser("kline-ondo", help="Get Ondo-mapped kline data by pair address or ticker")
+    p.add_argument("--pair", required=True, help="pair_address-chain or ticker symbol")
+    p.add_argument("--interval", type=int, default=60, choices=[1, 5, 15, 60, 240, 720, 1440])
+    p.add_argument("--size", type=int, default=24)
+    p.add_argument("--from-time", type=int, default=None)
+    p.add_argument("--to-time", type=int, default=None)
+
+    p = sub.add_parser("holders", help="Get token holders with sort/order")
     p.add_argument("--address", required=True)
     p.add_argument("--chain", required=True)
+    p.add_argument("--limit", type=int, default=100)
+    p.add_argument("--sort-by", default="balance", choices=["balance", "percentage"])
+    p.add_argument("--order", default="desc", choices=["asc", "desc"])
+
+    p = sub.add_parser("search-details", help="Batch search token details by address-chain list")
+    p.add_argument("--tokens", required=True, nargs="+", metavar="ADDRESS-CHAIN",
+                   help="Up to 50 address-chain identifiers")
 
     p = sub.add_parser("txs", help="Get swap transactions for a pair")
     p.add_argument("--address", required=True)
@@ -461,6 +621,85 @@ def main():
     p = sub.add_parser("main-tokens", help="Get main tokens for a chain")
     p.add_argument("--chain", required=True)
 
+    p = sub.add_parser("address-txs", help="Get wallet swap transaction history")
+    p.add_argument("--wallet", required=True, help="Wallet address")
+    p.add_argument("--chain", required=True)
+    p.add_argument("--token", default=None, help="Filter by token address")
+    p.add_argument("--from-time", type=int, default=None, help="Unix timestamp start")
+    p.add_argument("--last-time", default=None, help="RFC3339 cursor for pagination")
+    p.add_argument("--last-id", default=None, help="Cursor ID for pagination")
+    p.add_argument("--page-size", type=int, default=None, help="Results per page (max 100)")
+
+    p = sub.add_parser("address-pnl", help="Get wallet PnL for a specific token")
+    p.add_argument("--wallet", required=True, help="Wallet address")
+    p.add_argument("--chain", required=True)
+    p.add_argument("--token", required=True, help="Token contract address")
+
+    p = sub.add_parser("wallet-tokens", help="Get token holdings for a wallet")
+    p.add_argument("--wallet", required=True, help="Wallet address")
+    p.add_argument("--chain", required=True)
+    p.add_argument("--sort", default=None, help="Sort field (default: last_txn_time)")
+    p.add_argument("--sort-dir", default=None, choices=["asc", "desc"])
+    p.add_argument("--page-size", type=int, default=None)
+    p.add_argument("--page-no", type=int, default=None)
+    p.add_argument("--hide-sold", action="store_true", help="Hide tokens with zero balance")
+    p.add_argument("--hide-small", type=float, default=None, help="Hide tokens below USD value")
+    p.add_argument("--blue-chips", action="store_true", help="Only show blue-chip tokens")
+
+    p = sub.add_parser("wallet-info", help="Get wallet overview and stats")
+    p.add_argument("--wallet", required=True, help="Wallet address to inspect")
+    p.add_argument("--chain", required=True)
+    p.add_argument("--self-address", default=None, help="Your own address for relative stats")
+
+    p = sub.add_parser("smart-wallets", help="List smart wallets with profit filters")
+    p.add_argument("--chain", required=True)
+    p.add_argument("--keyword", default=None, help="Search by address keyword")
+    p.add_argument("--sort", default=None)
+    p.add_argument("--sort-dir", default=None, choices=["asc", "desc"])
+    p.add_argument("--profit-above-900-percent-num-min", type=float, default=None, dest="profit_above_900_percent_num_min")
+    p.add_argument("--profit-above-900-percent-num-max", type=float, default=None, dest="profit_above_900_percent_num_max")
+    p.add_argument("--profit-300-900-percent-num-min", type=float, default=None, dest="profit_300_900_percent_num_min")
+    p.add_argument("--profit-300-900-percent-num-max", type=float, default=None, dest="profit_300_900_percent_num_max")
+    p.add_argument("--profit-100-300-percent-num-min", type=float, default=None, dest="profit_100_300_percent_num_min")
+    p.add_argument("--profit-100-300-percent-num-max", type=float, default=None, dest="profit_100_300_percent_num_max")
+    p.add_argument("--profit-10-100-percent-num-min", type=float, default=None, dest="profit_10_100_percent_num_min")
+    p.add_argument("--profit-10-100-percent-num-max", type=float, default=None, dest="profit_10_100_percent_num_max")
+    p.add_argument("--profit-neg10-10-percent-num-min", type=float, default=None, dest="profit_neg10_10_percent_num_min")
+    p.add_argument("--profit-neg10-10-percent-num-max", type=float, default=None, dest="profit_neg10_10_percent_num_max")
+    p.add_argument("--profit-neg50-neg10-percent-num-min", type=float, default=None, dest="profit_neg50_neg10_percent_num_min")
+    p.add_argument("--profit-neg50-neg10-percent-num-max", type=float, default=None, dest="profit_neg50_neg10_percent_num_max")
+    p.add_argument("--profit-neg100-neg50-percent-num-min", type=float, default=None, dest="profit_neg100_neg50_percent_num_min")
+    p.add_argument("--profit-neg100-neg50-percent-num-max", type=float, default=None, dest="profit_neg100_neg50_percent_num_max")
+    p.add_argument("--last-trade-time-min", type=float, default=None, dest="last_trade_time_min")
+    p.add_argument("--last-trade-time-max", type=float, default=None, dest="last_trade_time_max")
+
+    p = sub.add_parser("signals", help="Get public trading signals")
+    p.add_argument("--chain", default="solana")
+    p.add_argument("--page-size", type=int, default=10)
+    p.add_argument("--page-no", type=int, default=1)
+
+    p = sub.add_parser("liq-txs", help="Get liquidity transactions for a pair")
+    p.add_argument("--address", required=True, help="Pair address")
+    p.add_argument("--chain", required=True)
+    p.add_argument("--limit", type=int, default=100)
+    p.add_argument("--from-time", type=int, default=None, help="Unix timestamp start")
+    p.add_argument("--to-time", type=int, default=None, help="Unix timestamp end")
+    p.add_argument("--type", default="all",
+                   choices=["addLiquidity", "removeLiquidity", "createPair", "all"])
+    p.add_argument("--sort", default="asc", choices=["asc", "desc"])
+
+    p = sub.add_parser("tx-detail", help="Get transaction detail by hash")
+    p.add_argument("--chain", required=True)
+    p.add_argument("--account", required=True, help="Account address involved in the tx")
+    p.add_argument("--tx-hash", required=True, help="Transaction hash")
+    p.add_argument("--start-from", type=int, default=None, help="Unix timestamp range start")
+    p.add_argument("--end-at", type=int, default=None, help="Unix timestamp range end")
+    p.add_argument("--limit", type=int, default=None)
+
+    p = sub.add_parser("pair", help="Get trading pair detail")
+    p.add_argument("--address", required=True, help="Pair contract address")
+    p.add_argument("--chain", required=True)
+
     if not IN_SERVER:
         _docker_gate("ave_data_rest.py")
 
@@ -472,7 +711,9 @@ def main():
         "price": cmd_price,
         "kline-token": cmd_kline_token,
         "kline-pair": cmd_kline_pair,
+        "kline-ondo": cmd_kline_ondo,
         "holders": cmd_holders,
+        "search-details": cmd_search_details,
         "txs": cmd_txs,
         "platform-tokens": cmd_platform_tokens,
         "trending": cmd_trending,
@@ -481,6 +722,15 @@ def main():
         "risk": cmd_risk,
         "chains": cmd_chains,
         "main-tokens": cmd_main_tokens,
+        "address-txs": cmd_address_txs,
+        "address-pnl": cmd_address_pnl,
+        "wallet-tokens": cmd_wallet_tokens,
+        "wallet-info": cmd_wallet_info,
+        "smart-wallets": cmd_smart_wallets,
+        "signals": cmd_signals,
+        "liq-txs": cmd_liq_txs,
+        "tx-detail": cmd_tx_detail,
+        "pair": cmd_pair,
     }
 
     try:

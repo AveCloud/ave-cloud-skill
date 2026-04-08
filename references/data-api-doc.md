@@ -136,6 +136,82 @@ Observed PROD behavior on 2026-03-09:
 - Some blue-chip stablecoins returned `SUCCESS: token not found`.
 - Use BSC WBNB or another token with known coverage for smoke tests.
 
+## Wallet / Address Endpoints
+
+### Address Swap History
+```
+GET /v2/address/tx?wallet_address={addr}&chain={chain}
+```
+Params: `wallet_address` (required), `chain` (required), `token_address`, `from_time` (unix), `last_time` (RFC3339 cursor), `last_id`, `page_size` (max 100)
+
+### Address Token PnL
+```
+GET /v2/address/pnl?wallet_address={addr}&chain={chain}&token_address={token}
+```
+All three params required.
+
+### Wallet Token Holdings
+```
+GET /v2/address/walletinfo/tokens?wallet_address={addr}&chain={chain}
+```
+Params: `wallet_address` (required), `chain` (required), `sort` (default: last_txn_time), `sort_dir`, `pageSize`, `pageNO`, `hide_sold` (0/1), `hide_small` (USD threshold), `blue_chips` (0/1)
+
+### Wallet Overview
+```
+GET /v2/address/walletinfo?wallet_address={addr}&chain={chain}
+```
+Params: `wallet_address` (required), `chain` (required), `self_address` (optional, for relative stats)
+
+### Smart Wallet List
+```
+GET /v2/address/smart_wallet/list?chain={chain}
+```
+Params: `chain` (required), `keyword`, `sort`, `sort_dir`, plus profit-tier range filters (profit_above_900_percent_num_min/max, profit_300_900_percent_num_min/max, etc.)
+
+## Additional Endpoints
+
+### Token Search Details (Batch)
+```
+POST /v2/tokens/search
+Body: { "token_ids": ["address-chain", ...] }
+```
+Max 50 tokens per request. Returns full token detail for each.
+
+### Token Holders (Full)
+```
+GET /v2/tokens/holders/{token_address}-{chain}?limit={n}&sort_by={field}&order={dir}
+```
+Params: `limit` (1-100, default 100), `sort_by` (balance|percentage, default balance), `order` (asc|desc, default desc)
+
+### Ondo Kline
+```
+GET /v2/klines/pair/ondo/{pair_address-chain or ticker}?interval={min}&limit={n}
+```
+Valid intervals: 1, 5, 15, 60, 240, 720, 1440
+
+### Liquidity Transactions
+```
+GET /v2/txs/liq/{pair_address}-{chain}?type={type}&limit={n}&sort={dir}
+```
+Params: `type` (addLiquidity|removeLiquidity|createPair|all), `limit` (max 300), `from_time`, `to_time`, `sort` (asc|desc)
+
+### Transaction Detail
+```
+GET /v2/txs/detail?chain={chain}&account_address={addr}&tx_hash={hash}
+```
+Params: all three required. Optional: `start_from`, `end_at` (unix), `limit`
+
+### Pair Detail
+```
+GET /v2/pairs/{pair_address}-{chain}
+```
+
+### Public Trading Signals
+```
+GET /v2/signals/public/list?chain={chain}&pageSize={n}&pageNO={n}
+```
+Params: `chain` (default: solana), `pageSize` (max 50), `pageNO` (default: 1)
+
 ## Common Chain Identifiers
 
 | Chain | ID |
