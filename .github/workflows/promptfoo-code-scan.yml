@@ -1,8 +1,8 @@
 name: Promptfoo Code Scan
 
 on:
-  issue_comment:
-    types: [created]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
@@ -11,45 +11,16 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: promptfoo-scan-pr-${{ github.event.issue.number || github.run_id }}
+  group: promptfoo-scan-pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  prepare:
-    if: >
-      github.event.issue.pull_request &&
-      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
-      (contains(github.event.comment.body, '/promptfoo scan') || contains(github.event.comment.body, '@promptfoo-scanner'))
-    runs-on: ubuntu-latest
-    outputs:
-      head_sha: ${{ steps.pr.outputs.head_sha }}
-      same_repo: ${{ steps.pr.outputs.same_repo }}
-    steps:
-      - name: Resolve PR context
-        id: pr
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.issue.number }}
-          REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-          if [ -z "$PR_NUMBER" ]; then
-            echo "Missing PR number" >&2
-            exit 1
-          fi
-          pr_json="$(gh api "repos/$REPO/pulls/$PR_NUMBER")"
-          echo "head_sha=$(jq -r '.head.sha' <<<"$pr_json")" >> "$GITHUB_OUTPUT"
-          echo "same_repo=$(jq -r --arg repo "$REPO" '.head.repo.full_name == $repo' <<<"$pr_json")" >> "$GITHUB_OUTPUT"
-
   code-scan:
-    needs: prepare
-    if: needs.prepare.outputs.same_repo == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ needs.prepare.outputs.head_sha }}
           fetch-depth: 0
       - name: Run Promptfoo Code Scan
         uses: promptfoo/code-scan-action@v0.1.4
