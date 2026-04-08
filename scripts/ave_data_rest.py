@@ -515,6 +515,21 @@ def cmd_liq_txs(args):
     handle_response(api_get(f"/txs/liq/{args.address}-{args.chain}", params))
 
 
+def cmd_tx_detail(args):
+    params = {
+        "chain": args.chain,
+        "account_address": args.account,
+        "tx_hash": args.tx_hash,
+    }
+    if args.start_from is not None:
+        params["start_from"] = args.start_from
+    if args.end_at is not None:
+        params["end_at"] = args.end_at
+    if args.limit:
+        params["limit"] = args.limit
+    handle_response(api_get("/txs/detail", params))
+
+
 def main():
     if not IN_SERVER:
         _docker_gate("ave_data_rest.py")
@@ -665,6 +680,14 @@ def main():
                    choices=["addLiquidity", "removeLiquidity", "createPair", "all"])
     p.add_argument("--sort", default="asc", choices=["asc", "desc"])
 
+    p = sub.add_parser("tx-detail", help="Get transaction detail by hash")
+    p.add_argument("--chain", required=True)
+    p.add_argument("--account", required=True, help="Account address involved in the tx")
+    p.add_argument("--tx-hash", required=True, help="Transaction hash")
+    p.add_argument("--start-from", type=int, default=None, help="Unix timestamp range start")
+    p.add_argument("--end-at", type=int, default=None, help="Unix timestamp range end")
+    p.add_argument("--limit", type=int, default=None)
+
     if not IN_SERVER:
         _docker_gate("ave_data_rest.py")
 
@@ -694,6 +717,7 @@ def main():
         "smart-wallets": cmd_smart_wallets,
         "signals": cmd_signals,
         "liq-txs": cmd_liq_txs,
+        "tx-detail": cmd_tx_detail,
     }
 
     try:
