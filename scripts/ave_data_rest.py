@@ -530,6 +530,10 @@ def cmd_tx_detail(args):
     handle_response(api_get("/txs/detail", params))
 
 
+def cmd_pair(args):
+    handle_response(api_get(f"/pairs/{args.address}-{args.chain}"))
+
+
 def main():
     if not IN_SERVER:
         _docker_gate("ave_data_rest.py")
@@ -688,6 +692,10 @@ def main():
     p.add_argument("--end-at", type=int, default=None, help="Unix timestamp range end")
     p.add_argument("--limit", type=int, default=None)
 
+    p = sub.add_parser("pair", help="Get trading pair detail")
+    p.add_argument("--address", required=True, help="Pair contract address")
+    p.add_argument("--chain", required=True)
+
     if not IN_SERVER:
         _docker_gate("ave_data_rest.py")
 
@@ -718,6 +726,7 @@ def main():
         "signals": cmd_signals,
         "liq-txs": cmd_liq_txs,
         "tx-detail": cmd_tx_detail,
+        "pair": cmd_pair,
     }
 
     try:
