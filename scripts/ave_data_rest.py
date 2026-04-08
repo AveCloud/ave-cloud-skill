@@ -440,6 +440,15 @@ def cmd_address_txs(args):
     handle_response(api_get("/address/tx", params))
 
 
+def cmd_address_pnl(args):
+    params = {
+        "wallet_address": args.wallet,
+        "chain": args.chain,
+        "token_address": args.token,
+    }
+    handle_response(api_get("/address/pnl", params))
+
+
 def main():
     if not IN_SERVER:
         _docker_gate("ave_data_rest.py")
@@ -532,6 +541,11 @@ def main():
     p.add_argument("--last-id", default=None, help="Cursor ID for pagination")
     p.add_argument("--page-size", type=int, default=None, help="Results per page (max 100)")
 
+    p = sub.add_parser("address-pnl", help="Get wallet PnL for a specific token")
+    p.add_argument("--wallet", required=True, help="Wallet address")
+    p.add_argument("--chain", required=True)
+    p.add_argument("--token", required=True, help="Token contract address")
+
     if not IN_SERVER:
         _docker_gate("ave_data_rest.py")
 
@@ -555,6 +569,7 @@ def main():
         "chains": cmd_chains,
         "main-tokens": cmd_main_tokens,
         "address-txs": cmd_address_txs,
+        "address-pnl": cmd_address_pnl,
     }
 
     try:
