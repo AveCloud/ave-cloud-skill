@@ -369,11 +369,15 @@ def cmd_kline_ondo(args):
     if resp.status_code >= 400:
         raise RuntimeError(f"API error {resp.status_code}: {resp.text}")
     body = resp.json()
-    points = body.get("data", {}).get("points")
-    if isinstance(points, list) and len(points) > args.size:
-        body["data"]["points"] = points[-args.size:]
-        body["data"]["limit"] = args.size
-        body["data"]["total_count"] = len(body["data"]["points"])
+    data = body.get("data")
+    if isinstance(data, dict):
+        points = data.get("points")
+        if isinstance(points, list) and len(points) > args.size:
+            data["points"] = points[-args.size:]
+            data["limit"] = args.size
+            data["total_count"] = len(data["points"])
+    elif isinstance(data, list) and len(data) > args.size:
+        body["data"] = data[-args.size:]
     print(json.dumps(body, indent=2))
 
 
