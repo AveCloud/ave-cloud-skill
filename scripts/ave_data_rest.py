@@ -449,6 +449,25 @@ def cmd_address_pnl(args):
     handle_response(api_get("/address/pnl", params))
 
 
+def cmd_wallet_tokens(args):
+    params = {"wallet_address": args.wallet, "chain": args.chain}
+    if args.sort:
+        params["sort"] = args.sort
+    if args.sort_dir:
+        params["sort_dir"] = args.sort_dir
+    if args.page_size:
+        params["pageSize"] = args.page_size
+    if args.page_no:
+        params["pageNO"] = args.page_no
+    if args.hide_sold:
+        params["hide_sold"] = 1
+    if args.hide_small is not None:
+        params["hide_small"] = args.hide_small
+    if args.blue_chips:
+        params["blue_chips"] = 1
+    handle_response(api_get("/address/walletinfo/tokens", params))
+
+
 def main():
     if not IN_SERVER:
         _docker_gate("ave_data_rest.py")
@@ -546,6 +565,17 @@ def main():
     p.add_argument("--chain", required=True)
     p.add_argument("--token", required=True, help="Token contract address")
 
+    p = sub.add_parser("wallet-tokens", help="Get token holdings for a wallet")
+    p.add_argument("--wallet", required=True, help="Wallet address")
+    p.add_argument("--chain", required=True)
+    p.add_argument("--sort", default=None, help="Sort field (default: last_txn_time)")
+    p.add_argument("--sort-dir", default=None, choices=["asc", "desc"])
+    p.add_argument("--page-size", type=int, default=None)
+    p.add_argument("--page-no", type=int, default=None)
+    p.add_argument("--hide-sold", action="store_true", help="Hide tokens with zero balance")
+    p.add_argument("--hide-small", type=float, default=None, help="Hide tokens below USD value")
+    p.add_argument("--blue-chips", action="store_true", help="Only show blue-chip tokens")
+
     if not IN_SERVER:
         _docker_gate("ave_data_rest.py")
 
@@ -570,6 +600,7 @@ def main():
         "main-tokens": cmd_main_tokens,
         "address-txs": cmd_address_txs,
         "address-pnl": cmd_address_pnl,
+        "wallet-tokens": cmd_wallet_tokens,
     }
 
     try:
