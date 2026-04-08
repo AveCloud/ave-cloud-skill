@@ -370,6 +370,14 @@ def cmd_holders(args):
     handle_response(api_get(f"/tokens/holders/{args.address}-{args.chain}", params))
 
 
+def cmd_search_details(args):
+    if len(args.tokens) > 50:
+        print("Error: max 50 tokens per request", file=sys.stderr)
+        sys.exit(1)
+    payload = {"token_ids": args.tokens}
+    handle_response(api_post("/tokens/search", payload))
+
+
 def cmd_txs(args):
     handle_response(api_get(f"/txs/{args.address}-{args.chain}"))
 
@@ -448,6 +456,10 @@ def main():
     p.add_argument("--sort-by", default="balance", choices=["balance", "percentage"])
     p.add_argument("--order", default="desc", choices=["asc", "desc"])
 
+    p = sub.add_parser("search-details", help="Batch search token details by address-chain list")
+    p.add_argument("--tokens", required=True, nargs="+", metavar="ADDRESS-CHAIN",
+                   help="Up to 50 address-chain identifiers")
+
     p = sub.add_parser("txs", help="Get swap transactions for a pair")
     p.add_argument("--address", required=True)
     p.add_argument("--chain", required=True)
@@ -483,6 +495,7 @@ def main():
         "kline-token": cmd_kline_token,
         "kline-pair": cmd_kline_pair,
         "holders": cmd_holders,
+        "search-details": cmd_search_details,
         "txs": cmd_txs,
         "platform-tokens": cmd_platform_tokens,
         "trending": cmd_trending,
