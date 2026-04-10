@@ -1,6 +1,6 @@
 ---
 name: ave-trade-chain-wallet
-version: 2.3.0
+version: 2.4.0
 description: |
   Execute self-custody DEX trades via the AVE Cloud Chain Wallet Trading API (https://bot-api.ave.ai).
   Use this skill whenever the user wants to:
@@ -73,14 +73,47 @@ Get a key at https://cloud.ave.ai/register. EVM signed sends also require `--rpc
 
 Preview or create first, then submit only after the path is valid and the user has confirmed execution.
 
+## Common Pitfalls
+
+- **Solana native token**: Use `sol` (not `So11111111111111111111111111111111111111112`) for `--in-token` / `--out-token` in all trade commands. The full mint address is rejected by the API.
+- **EVM sell requires approval first**: Before selling an ERC-20 token, run `approve-chain` to approve the swap router. Native coin buys do not need approval. Without approval, `swap-evm` sell will fail with `status 3025: failed to simulate send signed tx`.
+- **Minimum swap value**: The API rejects swaps below ~$0.10 USD with `swap value too small`. Use at least 0.01 SOL / 0.001 BNB / 0.0001 ETH.
+- **Solana fee required**: `swap-solana` and `create-solana-tx` require `--fee` (lamports). With `--use-mev`, minimum is 1000000 (0.001 SOL). Use `gas-tip` to query recommended values.
+- **EVM RPC required**: `swap-evm` requires `--rpc-url` or the chain env var (`AVE_BSC_RPC_URL`, etc.) for local signing (nonce, gas price, estimate gas).
+- **Query slippage first**: Use `auto-slippage` to get the recommended slippage for a token before trading. The API may override your slippage value.
+
 ## Operations
 
 ### Quote
 
-Get estimated output before building or sending anything.
+Get estimated output before building or sending anything. Response includes `spender` field for approval.
 
 ```bash
 python scripts/ave_trade_rest.py quote --chain <chain> --in-amount <amount> --in-token <token> --out-token <token> --swap-type buy|sell
+```
+
+### Auto Slippage
+
+Query recommended slippage (bps) for a token before trading.
+
+```bash
+python scripts/ave_trade_rest.py auto-slippage --chain <chain> --token <token_address> [--use-mev]
+```
+
+### Gas Tip
+
+Query recommended gas prices per chain. Returns low/average/high tiers in lamports (Solana) or wei (EVM).
+
+```bash
+python scripts/ave_trade_rest.py gas-tip
+```
+
+### Approve Chain (EVM only)
+
+Approve an ERC-20 token for the swap router before selling. Not needed for native coin buys. Gets spender from quote, builds and signs approve(MAX_UINT256) tx locally.
+
+```bash
+python scripts/ave_trade_rest.py approve-chain --chain bsc --token <erc20_address> [--rpc-url https://...]
 ```
 
 ### Swap EVM
@@ -131,15 +164,46 @@ Submit a pre-signed Solana transaction returned from `create-solana-tx`.
 python scripts/ave_trade_rest.py send-solana-tx --request-tx-id <id> --signed-tx <signed_tx>
 ```
 
-## Workflow Example
+## Workflow Examples
+
+### EVM buy + sell flow (self-custody)
+
+Buy a token, then approve and sell it back. Approval is only needed once per token per spender.
+
+```bash
+# 1. Check gas and slippage
+python scripts/ave_trade_rest.py gas-tip
+python scripts/ave_trade_rest.py auto-slippage --chain bsc --token <token>
+
+# 2. Buy (native coin -> token, no approval needed)
+python scripts/ave_trade_rest.py swap-evm --chain bsc --in-amount 1000000000000000 --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee --out-token <token> --swap-type buy --slippage 1000
+
+# 3. Approve token for selling (one-time per token)
+python scripts/ave_trade_rest.py approve-chain --chain bsc --token <token>
+
+# 4. Sell (token -> native coin)
+python scripts/ave_trade_rest.py swap-evm --chain bsc --in-amount <amount> --in-token <token> --out-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee --swap-type sell --slippage 1000
+```
+
+### Solana buy + sell flow (self-custody)
+
+No approval needed on Solana. Use `sol` for native token.
+
+```bash
+# Buy
+python scripts/ave_trade_rest.py swap-solana --in-amount 10000000 --in-token sol --out-token <token> --swap-type buy --slippage 1000 --fee 1000000 --use-mev
+
+# Sell (use full token address for in-token, sol for out-token)
+python scripts/ave_trade_rest.py swap-solana --in-amount <amount> --in-token <token_address> --out-token sol --swap-type sell --slippage 1000 --fee 1000000 --use-mev
+```
 
 ### External signer EVM flow
 
 Preview first, then build the unsigned transaction, then submit the signed payload.
 
 ```bash
-python scripts/ave_trade_rest.py quote --chain bsc --in-amount 500000000000000 --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee --out-token 0xb4357054c3da8d46ed642383f03139ac7f090343 --swap-type buy
-python scripts/ave_trade_rest.py create-evm-tx --chain bsc --creator-address 0x... --in-amount 500000000000000 --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee --out-token 0xb4357054c3da8d46ed642383f03139ac7f090343 --swap-type buy --slippage 500
+python scripts/ave_trade_rest.py quote --chain bsc --in-amount 500000000000000 --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee --out-token <token> --swap-type buy
+python scripts/ave_trade_rest.py create-evm-tx --chain bsc --creator-address 0x... --in-amount 500000000000000 --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee --out-token <token> --swap-type buy --slippage 500
 python scripts/ave_trade_rest.py send-evm-tx --chain bsc --request-tx-id <id> --signed-tx 0x...
 ```
 
