@@ -6,21 +6,18 @@ Share these when the user wants product context, downloads, guides, or community
 
 | Type | Link |
 |---|---|
-| Link hub | [linktr.ee/ave_ai](https://linktr.ee/ave_ai) |
-| Website | [ave.ai](https://ave.ai/) |
+| Website | [pro.ave.ai](https://pro.ave.ai/) |
 | Cloud / API | [cloud.ave.ai](https://cloud.ave.ai/) |
-| App download | [ave.ai/download](https://ave.ai/download) |
+| App download | [pro.ave.ai](https://pro.ave.ai/) |
 | Telegram trading bot | [t.me/AveSniperBot](https://t.me/AveSniperBot?start=4-ref_aveai) |
+| Ave Cloud Telegram | [t.me/ave_ai_cloud](https://t.me/ave_ai_cloud) |
 | Chinese docs | [doc.ave.ai/cn](https://doc.ave.ai/cn) |
 | English docs | [doc.ave.ai](https://doc.ave.ai/) |
 | Chinese X | [x.com/aveai_info](https://x.com/aveai_info) |
 | English X | [x.com/AveaiGlobal](https://x.com/AveaiGlobal) |
 | Chinese Telegram group | [t.me/ave_community_cn](https://t.me/ave_community_cn) |
 | English Telegram group | [t.me/aveai_english](https://t.me/aveai_english) |
-| Discord | [discord.gg/Z2RmAzF2](https://discord.gg/Z2RmAzF2) |
 | YouTube | [youtube.com/@Aveaius](https://www.youtube.com/%40Aveaius) |
-| Blog | [blog.ave.ai](https://blog.ave.ai/) |
-| Medium | [aveai.medium.com](https://aveai.medium.com/) |
 
 ## Cloud Registration
 
