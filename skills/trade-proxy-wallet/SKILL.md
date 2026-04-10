@@ -64,6 +64,15 @@ Get keys at https://cloud.ave.ai/register. Proxy Wallet API must be activated on
 
 Preview or query order state first when useful, and do not treat the initial submission acknowledgement as final execution status.
 
+## Common Pitfalls
+
+- **Solana native token**: Use `sol` (not `So11111111111111111111111111111111111111112`) for `--in-token` / `--out-token`. The full mint address is rejected.
+- **Solana requires `--gas`**: Market and limit orders on Solana require `--gas` (lamports). With `--use-mev`, minimum is 1000000 (0.001 SOL). Or use `--auto-gas high`.
+- **EVM requires gas**: Use `--auto-gas average` or `--extra-gas` (wei) for EVM chains.
+- **Minimum swap value**: Orders below ~$0.10 USD are rejected with `swap value too small`.
+- **EVM sell needs approval**: Before selling ERC-20 tokens, approve them with `approve-token`. Native coin buys do not need approval.
+- **Verify order status**: `market-order` returns an order ID, not a tx hash. Always call `get-swap-orders` to confirm the order was filled.
+
 ## Operations
 
 ### Wallet management
@@ -81,7 +90,11 @@ python scripts/ave_trade_rest.py delete-wallet --assets-ids id1 id2
 Place an immediate proxy-wallet swap order.
 
 ```bash
-python scripts/ave_trade_rest.py market-order --chain <chain> --assets-id <assetsId> --in-token <token> --out-token <token> --in-amount <amount> --swap-type buy|sell --slippage 500 [--auto-slippage] [--use-mev] [--auto-sell '{"priceChange":"-5000","sellRatio":"10000","type":"default"}']
+# Solana (--gas required, --use-mev min 1000000 lamports)
+python scripts/ave_trade_rest.py market-order --chain solana --assets-id <assetsId> --in-token sol --out-token <token> --in-amount 10000000 --swap-type buy --slippage 1000 --use-mev --gas 1000000
+
+# EVM (--auto-gas or --extra-gas required)
+python scripts/ave_trade_rest.py market-order --chain bsc --assets-id <assetsId> --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee --out-token <token> --in-amount 1000000000000000 --swap-type buy --slippage 1000 --auto-gas average
 ```
 
 `--auto-sell` supports default TP/SL rules plus one trailing rule.
@@ -139,15 +152,34 @@ python scripts/ave_trade_wss.py watch-orders
 
 ## Workflow Example
 
-### Disposable wallet buy flow
+### Solana buy + sell flow
 
-Create a wallet, place the order, watch it live, then confirm by order ID.
+Buy a token, confirm, then sell back.
 
 ```bash
-python scripts/ave_trade_rest.py create-wallet --name "test-wallet"
-python scripts/ave_trade_rest.py market-order --chain solana --assets-id <assetsId> --in-token sol --out-token <token> --in-amount 2000000 --swap-type buy --slippage 500 --use-mev
-python scripts/ave_trade_wss.py watch-orders
+# 1. Buy (sol -> token)
+python scripts/ave_trade_rest.py market-order --chain solana --assets-id <assetsId> --in-token sol --out-token <token> --in-amount 10000000 --swap-type buy --slippage 1000 --use-mev --gas 1000000
+
+# 2. Confirm buy
 python scripts/ave_trade_rest.py get-swap-orders --chain solana --ids <order_id>
+
+# 3. Sell (use full token address for in-token, sol for out-token)
+python scripts/ave_trade_rest.py market-order --chain solana --assets-id <assetsId> --in-token <token_address> --out-token sol --in-amount <received_amount> --swap-type sell --slippage 1000 --use-mev --gas 1000000
+```
+
+### EVM buy + sell flow
+
+Buy a token, approve for selling, then sell. Approval is one-time per token.
+
+```bash
+# 1. Buy (native coin -> token)
+python scripts/ave_trade_rest.py market-order --chain bsc --assets-id <assetsId> --in-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee --out-token <token> --in-amount 1000000000000000 --swap-type buy --slippage 1000 --auto-gas average
+
+# 2. Approve token for selling (one-time)
+python scripts/ave_trade_rest.py approve-token --chain bsc --assets-id <assetsId> --token-address <token>
+
+# 3. Sell (token -> native coin)
+python scripts/ave_trade_rest.py market-order --chain bsc --assets-id <assetsId> --in-token <token> --out-token 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee --in-amount <received_amount> --swap-type sell --slippage 1000 --auto-gas average
 ```
 
 ## Reference
