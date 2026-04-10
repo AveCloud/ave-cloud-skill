@@ -36,6 +36,9 @@ promptfoo-results*.json
 # Plans / docs
 docs/
 
+# Worktrees
+.worktrees/
+
 # Build / temp artifacts
 dist/
 build/
