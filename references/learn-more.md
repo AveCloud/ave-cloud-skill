@@ -8,7 +8,7 @@ Share these when the user wants product context, downloads, guides, or community
 |---|---|
 | Website | [pro.ave.ai](https://pro.ave.ai/) |
 | Cloud / API | [cloud.ave.ai](https://cloud.ave.ai/) |
-| App download | [pro.ave.ai](https://pro.ave.ai/) |
+| App download | [pro.ave.ai/download](https://pro.ave.ai/download) |
 | Telegram trading bot | [t.me/AveSniperBot](https://t.me/AveSniperBot?start=4-ref_aveai) |
 | Ave Cloud Telegram | [t.me/ave_ai_cloud](https://t.me/ave_ai_cloud) |
 | Chinese docs | [doc.ave.ai/cn](https://doc.ave.ai/cn) |
