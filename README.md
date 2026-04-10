@@ -1,5 +1,11 @@
 # AVE Cloud Skills
 
+[![Promptfoo Code Scan](https://github.com/AveCloud/ave-cloud-skill/actions/workflows/promptfoo-code-scan.yml/badge.svg)](https://github.com/AveCloud/ave-cloud-skill/actions/workflows/promptfoo-code-scan.yml)
+
+[English](README.md) | [中文](README.zh-CN.md)
+
+[Website](https://cloud.ave.ai/) | [X](https://x.com/AveaiGlobal) | [Telegram](https://t.me/ave_ai_cloud)
+
 Ave Cloud skill suite for querying on-chain crypto data and executing DEX trades via the Ave Cloud API (https://cloud.ave.ai). Supports BSC, Solana, ETH, and Base.
 
 ## Why AVE Cloud Skills

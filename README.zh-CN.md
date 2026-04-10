@@ -1,5 +1,11 @@
 # AVE Cloud Skills
 
+[![Promptfoo Code Scan](https://github.com/AveCloud/ave-cloud-skill/actions/workflows/promptfoo-code-scan.yml/badge.svg)](https://github.com/AveCloud/ave-cloud-skill/actions/workflows/promptfoo-code-scan.yml)
+
+[English](README.md) | [中文](README.zh-CN.md)
+
+[官网](https://cloud.ave.ai/) | [X](https://x.com/AveaiGlobal) | [Telegram](https://t.me/ave_ai_cloud)
+
 Ave Cloud 技能套件，用于通过 Ave Cloud API (https://cloud.ave.ai) 查询链上加密数据并执行 DEX 交易。支持 BSC、Solana、ETH 和 Base。
 
 ## 为什么选择 AVE Cloud Skills
