@@ -7,7 +7,7 @@ import os
 from ave.config import CHAIN_ID, RPC_ENV
 from ave.http import rpc_call, trade_post
 from ave.output import handle_response, response_ok
-from ave.trade.signing import get_evm_account, get_solana_keypair, sign_evm_tx, sign_solana_tx
+from ave.trade.signing import checksum_address, get_evm_account, get_solana_keypair, sign_evm_tx, sign_solana_tx
 
 
 def _validate_fee_recipient_args(args: argparse.Namespace) -> None:
@@ -23,6 +23,35 @@ async def cmd_quote(args: argparse.Namespace) -> None:
         "inTokenAddress": args.in_token, "outTokenAddress": args.out_token, "swapType": args.swap_type,
     }
     handle_response(await trade_post("/v1/thirdParty/chainWallet/getAmountOut", payload))
+
+
+async def cmd_approve_chain(args: argparse.Namespace) -> None:
+    account = get_evm_account()
+    rpc_url = args.rpc_url or os.environ.get(RPC_ENV[args.chain])
+    if not rpc_url:
+        raise EnvironmentError(f"approve-chain requires RPC. Pass --rpc-url or set {RPC_ENV[args.chain]}.")
+    # Get spender from quote
+    quote_resp = await trade_post("/v1/thirdParty/chainWallet/getAmountOut", {
+        "chain": args.chain, "inAmount": args.in_amount or "1000000000000000000",
+        "inTokenAddress": args.token, "outTokenAddress": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "swapType": "sell",
+    })
+    quote_json = quote_resp.json()
+    if quote_resp.status_code >= 400 or not response_ok(quote_json):
+        raise RuntimeError(f"quote failed: {quote_resp.text}")
+    spender = quote_json["data"]["spender"]
+    # ERC-20 approve(spender, MAX_UINT256)
+    max_uint = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    calldata = "0x095ea7b3" + spender[2:].lower().zfill(64) + max_uint
+    nonce = int(await rpc_call(rpc_url, "eth_getTransactionCount", [account.address, "latest"]), 16)
+    gas_price = int(await rpc_call(rpc_url, "eth_gasPrice", []), 16)
+    tx_dict = {
+        "to": checksum_address(args.token), "data": calldata, "gas": 60000,
+        "value": 0, "nonce": nonce, "gasPrice": gas_price, "chainId": CHAIN_ID[args.chain],
+    }
+    signed_tx = sign_evm_tx(tx_dict, account.key)
+    tx_hash = await rpc_call(rpc_url, "eth_sendRawTransaction", [signed_tx])
+    print(json.dumps({"status": "approved", "spender": spender, "token": args.token, "chain": args.chain, "txHash": tx_hash}, indent=2))
 
 
 async def cmd_create_evm_tx(args: argparse.Namespace) -> None:

@@ -6,6 +6,14 @@ import hmac
 import os
 
 
+def checksum_address(addr: str) -> str:
+    try:
+        from eth_utils import to_checksum_address
+    except ImportError:
+        raise ImportError("eth-utils is required. Run: pip install eth-account>=0.10.0")
+    return to_checksum_address(addr)
+
+
 def get_evm_account():
     try:
         from eth_account import Account

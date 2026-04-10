@@ -2,7 +2,7 @@
 
 from ave.config import ALL_CHAINS, EVM_CHAINS
 from ave.trade.chain import (
-    cmd_quote, cmd_create_evm_tx, cmd_send_evm_tx,
+    cmd_quote, cmd_approve_chain, cmd_create_evm_tx, cmd_send_evm_tx,
     cmd_create_solana_tx, cmd_send_solana_tx, cmd_swap_evm, cmd_swap_solana,
 )
 from ave.trade.proxy import (
@@ -12,7 +12,8 @@ from ave.trade.proxy import (
 )
 
 TRADE_COMMANDS = {
-    "quote": cmd_quote, "create-evm-tx": cmd_create_evm_tx, "send-evm-tx": cmd_send_evm_tx,
+    "quote": cmd_quote, "approve-chain": cmd_approve_chain,
+    "create-evm-tx": cmd_create_evm_tx, "send-evm-tx": cmd_send_evm_tx,
     "create-solana-tx": cmd_create_solana_tx, "send-solana-tx": cmd_send_solana_tx,
     "swap-evm": cmd_swap_evm, "swap-solana": cmd_swap_solana,
     "list-wallets": cmd_list_wallets, "create-wallet": cmd_create_wallet, "delete-wallet": cmd_delete_wallet,
@@ -30,6 +31,12 @@ def register_trade_parsers(sub) -> None:
     p.add_argument("--in-token", required=True)
     p.add_argument("--out-token", required=True)
     p.add_argument("--swap-type", required=True, choices=["buy", "sell"])
+
+    p = sub.add_parser("approve-chain", help="Approve ERC-20 token for chain wallet swap router")
+    p.add_argument("--chain", required=True, choices=EVM_CHAINS)
+    p.add_argument("--token", required=True, help="ERC-20 token address to approve")
+    p.add_argument("--in-amount", default=None, help="Amount for quote to discover spender (default: 1e18)")
+    p.add_argument("--rpc-url", default=None, help="EVM JSON-RPC URL (overrides env)")
 
     p = sub.add_parser("create-evm-tx", help="Create unsigned EVM swap transaction")
     p.add_argument("--chain", required=True, choices=EVM_CHAINS)
