@@ -2,7 +2,8 @@
 
 from ave.config import ALL_CHAINS, EVM_CHAINS
 from ave.trade.chain import (
-    cmd_quote, cmd_approve_chain, cmd_create_evm_tx, cmd_send_evm_tx,
+    cmd_quote, cmd_auto_slippage, cmd_gas_tip, cmd_approve_chain,
+    cmd_create_evm_tx, cmd_send_evm_tx,
     cmd_create_solana_tx, cmd_send_solana_tx, cmd_swap_evm, cmd_swap_solana,
 )
 from ave.trade.proxy import (
@@ -12,7 +13,8 @@ from ave.trade.proxy import (
 )
 
 TRADE_COMMANDS = {
-    "quote": cmd_quote, "approve-chain": cmd_approve_chain,
+    "quote": cmd_quote, "auto-slippage": cmd_auto_slippage, "gas-tip": cmd_gas_tip,
+    "approve-chain": cmd_approve_chain,
     "create-evm-tx": cmd_create_evm_tx, "send-evm-tx": cmd_send_evm_tx,
     "create-solana-tx": cmd_create_solana_tx, "send-solana-tx": cmd_send_solana_tx,
     "swap-evm": cmd_swap_evm, "swap-solana": cmd_swap_solana,
@@ -31,6 +33,13 @@ def register_trade_parsers(sub) -> None:
     p.add_argument("--in-token", required=True)
     p.add_argument("--out-token", required=True)
     p.add_argument("--swap-type", required=True, choices=["buy", "sell"])
+
+    p = sub.add_parser("auto-slippage", help="Query recommended slippage for a token")
+    p.add_argument("--chain", required=True, choices=ALL_CHAINS)
+    p.add_argument("--token", required=True, help="Token address")
+    p.add_argument("--use-mev", action="store_true")
+
+    sub.add_parser("gas-tip", help="Query recommended gas prices per chain")
 
     p = sub.add_parser("approve-chain", help="Approve ERC-20 token for chain wallet swap router")
     p.add_argument("--chain", required=True, choices=EVM_CHAINS)

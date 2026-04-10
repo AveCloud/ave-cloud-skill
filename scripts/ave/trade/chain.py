@@ -25,6 +25,16 @@ async def cmd_quote(args: argparse.Namespace) -> None:
     handle_response(await trade_post("/v1/thirdParty/chainWallet/getAmountOut", payload))
 
 
+async def cmd_auto_slippage(args: argparse.Namespace) -> None:
+    payload = {"chain": args.chain, "tokenAddress": args.token, "useMev": args.use_mev}
+    handle_response(await trade_post("/v1/thirdParty/chainWallet/getAutoSlippage", payload))
+
+
+async def cmd_gas_tip(args: argparse.Namespace) -> None:
+    from ave.http import trade_get
+    handle_response(await trade_get("/v1/thirdParty/chainWallet/getGasTip"))
+
+
 async def cmd_approve_chain(args: argparse.Namespace) -> None:
     account = get_evm_account()
     rpc_url = args.rpc_url or os.environ.get(RPC_ENV[args.chain])
