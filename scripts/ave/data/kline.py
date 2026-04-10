@@ -7,11 +7,15 @@ from ave.http import api_get
 
 
 def _trim_kline_points(body: dict, size: int) -> dict:
-    points = body.get("data", {}).get("points")
-    if isinstance(points, list) and len(points) > size:
-        body["data"]["points"] = points[-size:]
-        body["data"]["limit"] = size
-        body["data"]["total_count"] = len(body["data"]["points"])
+    data = body.get("data")
+    if isinstance(data, dict):
+        points = data.get("points")
+        if isinstance(points, list) and len(points) > size:
+            data["points"] = points[-size:]
+            data["limit"] = size
+            data["total_count"] = len(data["points"])
+    elif isinstance(data, list) and len(data) > size:
+        body["data"] = data[-size:]
     return body
 
 
