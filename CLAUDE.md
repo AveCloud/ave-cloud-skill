@@ -10,12 +10,14 @@ scripts/
   ave_data_wss.py     # Data WebSocket — real-time price/tx/kline streams, server daemon
   ave_trade_rest.py   # Trade REST API — chain wallet + proxy wallet trading
   ave_trade_wss.py    # Trade WebSocket — proxy wallet order status push
+  ave/                # CLI implementation: data/, trade/, wss/ commands, config, Docker gate
   requirements.txt    # pip dependencies
   Dockerfile.txt      # Docker image (entrypoint: ave_data_wss.py for server daemon)
 references/
   data-api-doc.md     # Ave Cloud Data API endpoint reference
   trade-api-doc.md    # Ave Cloud Bot Trade API endpoint reference
 skills/
+  ave-wallet-suite/   # Skill: ave-wallet-suite (router)
   data-rest/          # Skill: ave-data-rest
   data-wss/           # Skill: ave-data-wss
   trade-chain-wallet/ # Skill: ave-trade-chain-wallet
@@ -26,6 +28,7 @@ skills/
 
 | Skill | Script(s) | When to use |
 |---|---|---|
+| `ave-wallet-suite` | none (router) | Ambiguous AVE requests; routes to the skills below |
 | `ave-data-rest` | `ave_data_rest.py` | Search tokens, price, kline/OHLCV, holders, swap txs, trending, risk/honeypot — any REST data query |
 | `ave-data-wss` | `ave_data_wss.py` | Real-time price/tx/kline streams, interactive WSS REPL, server daemon mode — requires `API_PLAN=pro` |
 | `ave-trade-chain-wallet` | `ave_trade_rest.py` | Swap quote, build/sign/send EVM or Solana tx, self-custody DEX trades — user controls private keys |
@@ -53,10 +56,10 @@ skills/
 | `AVE_EVM_PRIVATE_KEY` | trade-chain-wallet (optional) | Hex private key for BSC/ETH/Base signing |
 | `AVE_SOLANA_PRIVATE_KEY` | trade-chain-wallet (optional) | Base58 private key for Solana signing |
 | `AVE_MNEMONIC` | trade-chain-wallet (optional) | BIP39 mnemonic for all chains; individual key takes priority |
-| `AVE_USE_DOCKER` | all scripts | Set to `true` to use requests-ratelimiter (auto-set in Docker) |
-| `AVE_BSC_RPC_URL` | trade-chain-wallet (optional) | Override BSC JSON-RPC URL (default: https://bsc.publicnode.com) |
-| `AVE_ETH_RPC_URL` | trade-chain-wallet (optional) | Override ETH JSON-RPC URL (default: https://ethereum.publicnode.com) |
-| `AVE_BASE_RPC_URL` | trade-chain-wallet (optional) | Override Base JSON-RPC URL (default: https://base.publicnode.com) |
+| `AVE_USE_DOCKER` | all scripts | `true` re-runs the script in the `ave-cloud` Docker image; `false` runs on the host; unset asks once on a TTY and saves the answer to `~/.ave_cloud_docker_mode` (no TTY: Docker). `start-server` requires `true` |
+| `AVE_BSC_RPC_URL` | trade-chain-wallet (`swap-evm`, `approve-chain`) | BSC JSON-RPC URL; required unless `--rpc-url` is passed; no default |
+| `AVE_ETH_RPC_URL` | trade-chain-wallet (`swap-evm`, `approve-chain`) | ETH JSON-RPC URL; required unless `--rpc-url` is passed; no default |
+| `AVE_BASE_RPC_URL` | trade-chain-wallet (`swap-evm`, `approve-chain`) | Base JSON-RPC URL; required unless `--rpc-url` is passed; no default |
 
 ## Quick Decision Guide
 

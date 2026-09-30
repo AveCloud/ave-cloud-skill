@@ -44,10 +44,10 @@ This directory contains 5 skills for the AVE Cloud API suite.
 | `AVE_EVM_PRIVATE_KEY` | trade-chain-wallet (optional) | Hex private key for BSC/ETH/Base signing |
 | `AVE_SOLANA_PRIVATE_KEY` | trade-chain-wallet (optional) | Base58 private key for Solana signing |
 | `AVE_MNEMONIC` | trade-chain-wallet (optional) | BIP39 mnemonic for all chains; individual key takes priority |
-| `AVE_USE_DOCKER` | all scripts | Set to `true` to use requests-ratelimiter (auto-set in Docker) |
-| `AVE_BSC_RPC_URL` | trade-chain-wallet (optional) | Override BSC JSON-RPC URL (default: https://bsc.publicnode.com) |
-| `AVE_ETH_RPC_URL` | trade-chain-wallet (optional) | Override ETH JSON-RPC URL (default: https://ethereum.publicnode.com) |
-| `AVE_BASE_RPC_URL` | trade-chain-wallet (optional) | Override Base JSON-RPC URL (default: https://base.publicnode.com) |
+| `AVE_USE_DOCKER` | all scripts | `true` re-runs the script in the `ave-cloud` Docker image; `false` runs on the host; unset asks once on a TTY and saves the answer to `~/.ave_cloud_docker_mode` (no TTY: Docker). `start-server` requires `true` |
+| `AVE_BSC_RPC_URL` | trade-chain-wallet (`swap-evm`, `approve-chain`) | BSC JSON-RPC URL; required unless `--rpc-url` is passed; no default |
+| `AVE_ETH_RPC_URL` | trade-chain-wallet (`swap-evm`, `approve-chain`) | ETH JSON-RPC URL; required unless `--rpc-url` is passed; no default |
+| `AVE_BASE_RPC_URL` | trade-chain-wallet (`swap-evm`, `approve-chain`) | Base JSON-RPC URL; required unless `--rpc-url` is passed; no default |
 
 ## API Plan Matrix
 

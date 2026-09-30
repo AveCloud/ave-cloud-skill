@@ -61,7 +61,7 @@ python scripts/ave_data_wss.py wss-repl
 | Command | Description |
 |---|---|
 | `subscribe price <addr-chain> [...]` | Stream live price changes for one or more tokens |
-| `subscribe tx <pair> <chain> [tx|multi_tx|liq]` | Stream swap or liquidity events for a pair |
+| `subscribe <tx|multi_tx|liq> <pair> <chain>` | Stream swap (`tx`, `multi_tx`) or liquidity (`liq`) events for a pair |
 | `subscribe kline <pair> <chain> [interval]` | Stream live candle updates for a pair |
 | `unsubscribe` | Cancel the current subscription |
 | `quit` | Close the connection and exit |

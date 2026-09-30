@@ -44,7 +44,7 @@
 ls -la ~/.agents/skills/ave-cloud-skill
 ```
 
-你应该会看到四个 skill 目录：`data-rest`、`data-wss`、`trade-chain-wallet` 和 `trade-proxy-wallet`。
+你应该会看到五个 skill 目录：`ave-wallet-suite`、`data-rest`、`data-wss`、`trade-chain-wallet` 和 `trade-proxy-wallet`。
 
 ## 可用 Skills
 
