@@ -113,7 +113,7 @@ Get market or limit order status by ID or filter.
 
 ```bash
 python scripts/ave_trade_rest.py get-swap-orders --chain <chain> --ids id1,id2
-python scripts/ave_trade_rest.py get-limit-orders --chain <chain> --assets-id <assetsId> [--status waiting] [--token <token>] [--page-size 20] [--page-no 0]
+python scripts/ave_trade_rest.py get-limit-orders --chain <chain> --assets-id <assetsId> --page-size 20 --page-no 0 [--status waiting] [--token <token>]
 ```
 
 ### Cancel limit order

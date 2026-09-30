@@ -40,7 +40,7 @@
 
 ## 验证
 
-重启后，询问 OpenCode 当前有哪些可用的 AVE Cloud skills。它应该会列出这个仓库中的四个 skills。
+重启后，询问 OpenCode 当前有哪些可用的 AVE Cloud skills。它应该会列出这个仓库中的五个 skills。
 
 ## 可用 Skills
 

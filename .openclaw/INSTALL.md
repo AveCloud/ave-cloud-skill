@@ -44,7 +44,7 @@ Enable AVE Cloud skills in OpenClaw via native skill discovery.
 ls -la ~/.agents/skills/ave-cloud-skill
 ```
 
-You should see four skill directories: `data-rest`, `data-wss`, `trade-chain-wallet`, and `trade-proxy-wallet`.
+You should see five skill directories: `ave-wallet-suite`, `data-rest`, `data-wss`, `trade-chain-wallet`, and `trade-proxy-wallet`.
 
 ## Available Skills
 

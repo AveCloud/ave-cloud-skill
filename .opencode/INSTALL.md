@@ -40,7 +40,7 @@ Enable AVE Cloud skills in OpenCode via native skill discovery.
 
 ## Verify
 
-After restarting, ask OpenCode which AVE Cloud skills are available. It should list the four skills from this repo.
+After restarting, ask OpenCode which AVE Cloud skills are available. It should list the five skills from this repo.
 
 ## Available Skills
 
